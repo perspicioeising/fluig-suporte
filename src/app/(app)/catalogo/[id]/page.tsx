@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft, ExternalLink, Send } from "lucide-react";
 import { getEntry, parseExamples } from "@/modules/catalog/queries";
 import {
   KindBadge,
@@ -114,6 +114,20 @@ async function EntryDetail({ params }: { params: Promise<{ id: string }> }) {
           )}
         </Block>
       )}
+
+      {(entry.kind === "rest_new" || entry.kind === "rest_old") &&
+        entry.path &&
+        entry.http_method && (
+          <p className="text-sm">
+            <Link
+              href={`/tester?${new URLSearchParams({ method: entry.http_method, path: entry.path }).toString()}`}
+              className="inline-flex items-center gap-1 rounded-md border border-border px-3 py-1.5 hover:bg-surface-2"
+            >
+              <Send className="size-4 text-accent" aria-hidden />
+              Abrir no API Tester
+            </Link>
+          </p>
+        )}
 
       <p className="text-sm">
         <a
