@@ -92,7 +92,7 @@ export function OperationPanel({
           </span>
         </div>
         {op.documentation && <p className="text-sm text-muted">{op.documentation}</p>}
-        <dl className="grid gap-x-6 gap-y-1 pt-1 text-xs sm:grid-cols-2">
+        <dl className="grid gap-x-6 gap-y-1 pt-1 text-xs @md/main:grid-cols-2">
           <div className="flex gap-2"><dt className="text-muted">Serviço:</dt><dd className="font-mono">{op.service}</dd></div>
           <div className="flex gap-2"><dt className="text-muted">Porta:</dt><dd className="font-mono">{op.port}</dd></div>
           <div className="flex gap-2"><dt className="text-muted">SOAPAction:</dt><dd className="font-mono break-all">{op.soapAction || "(vazio)"}</dd></div>
@@ -100,7 +100,7 @@ export function OperationPanel({
         </dl>
       </header>
 
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-3 @xl/main:grid-cols-2">
         <ParamTree title="Entrada" shape={op.input} />
         <ParamTree title="Saída" shape={op.output} />
       </div>
@@ -111,7 +111,7 @@ export function OperationPanel({
       <section aria-label="Envelope da requisição" className="space-y-3 rounded-lg border border-border bg-surface p-4">
         <div className="flex flex-wrap items-center gap-2">
           <label htmlFor="soap-env" className="sr-only">Ambiente</label>
-          <select id="soap-env" value={envId} onChange={(e) => setEnvId(e.target.value)} className={cn(fieldClass, "min-w-0 md:w-56")}>
+          <select id="soap-env" value={envId} onChange={(e) => setEnvId(e.target.value)} className={cn(fieldClass, "min-w-0 @xl/main:w-56")}>
             {environments.length === 0 && <option value="">Nenhum ambiente</option>}
             {environments.map((e) => (
               <option key={e.id} value={e.id} disabled={!e.is_active}>

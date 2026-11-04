@@ -70,7 +70,7 @@ export function HistoryFilters({
         navigate(values, true);
       }}
     >
-      <div className="flex flex-col gap-2 lg:flex-row">
+      <div className="flex flex-col gap-2 @2xl/main:flex-row">
         <label htmlFor="h-q" className="sr-only">Buscar no histórico</label>
         <input
           id="h-q"

@@ -31,7 +31,7 @@ export default function HelpPage() {
       </header>
 
       <nav aria-label="Atalhos rápidos">
-        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <ul className="grid gap-3 @md/main:grid-cols-2 @5xl/main:grid-cols-5">
           {QUICK_LINKS.map(({ href, label, icon: Icon }) => (
             <li key={href}>
               <a
@@ -46,13 +46,13 @@ export default function HelpPage() {
         </ul>
       </nav>
 
-      <div className="grid gap-8 lg:grid-cols-[15rem_minmax(0,1fr)]">
+      <div className="grid gap-8 @2xl/main:grid-cols-[15rem_minmax(0,1fr)]">
         {/* Índice: fixo em telas largas; recolhível em telas pequenas */}
-        <aside className="lg:sticky lg:top-4 lg:self-start">
+        <aside className="@2xl/main:sticky @2xl/main:top-20 @2xl/main:self-start">
           <nav aria-label="Índice da ajuda" className="rounded-lg border border-border bg-surface p-3">
-            <details open className="group lg:[&>summary]:hidden" >
-              <summary className="cursor-pointer text-sm font-medium lg:hidden">Índice</summary>
-              <div className="space-y-4 pt-2 lg:pt-0">
+            <details open className="group @2xl/main:[&>summary]:hidden" >
+              <summary className="cursor-pointer text-sm font-medium @2xl/main:hidden">Índice</summary>
+              <div className="space-y-4 pt-2 @2xl/main:pt-0">
                 {groups.map(({ group, sections }) => (
                   <div key={group}>
                     <p className="mb-1 text-[11px] font-semibold tracking-wide text-muted uppercase">{group}</p>

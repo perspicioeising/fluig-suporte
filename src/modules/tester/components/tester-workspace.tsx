@@ -206,7 +206,7 @@ export function TesterWorkspace({
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]">
+    <div className="grid gap-4 @2xl/main:grid-cols-[18rem_minmax(0,1fr)]">
       <TesterSidebar
         collections={collections}
         history={history}
@@ -223,7 +223,7 @@ export function TesterWorkspace({
           }}
           className="space-y-3 rounded-lg border border-border bg-surface p-4"
         >
-          <div className="flex flex-col gap-2 md:flex-row">
+          <div className="flex flex-col gap-2 @xl/main:flex-row">
             <div className="flex gap-2">
               <label className="sr-only" htmlFor="env">
                 Ambiente
@@ -232,7 +232,7 @@ export function TesterWorkspace({
                 id="env"
                 value={envId}
                 onChange={(e) => setEnvId(e.target.value)}
-                className={cn(fieldClass, "min-w-0 md:w-44")}
+                className={cn(fieldClass, "min-w-0 @xl/main:w-44")}
               >
                 {environments.map((e) => (
                   <option key={e.id} value={e.id} disabled={!e.is_active}>
@@ -260,7 +260,7 @@ export function TesterWorkspace({
             </div>
 
             <div className="flex min-w-0 flex-1 items-center gap-2">
-              <span className="hidden max-w-[40%] truncate font-mono text-xs text-muted lg:block" title={env?.base_url}>
+              <span className="hidden max-w-[40%] truncate font-mono text-xs text-muted @2xl/main:block" title={env?.base_url}>
                 {env?.base_url}
               </span>
               <label className="sr-only" htmlFor="path">
@@ -318,7 +318,7 @@ export function TesterWorkspace({
 
           {saveOpen && (
             <div className="space-y-2 rounded-md border border-border bg-surface-2 p-3">
-              <div className="grid gap-2 md:grid-cols-3">
+              <div className="grid gap-2 @xl/main:grid-cols-3">
                 <div className="space-y-1">
                   <label htmlFor="save-name" className="text-xs font-medium">Nome da requisição</label>
                   <input id="save-name" value={saveName} onChange={(e) => setSaveName(e.target.value)} className={cn(fieldClass, "w-full")} />

@@ -166,7 +166,7 @@ export function RestBuilder({
           {pathNames.length > 0 && (
             <div className="space-y-2">
               <h4 className="text-xs font-semibold tracking-wide text-muted uppercase">Caminho</h4>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 @md/main:grid-cols-2">
                 {pathNames.map((name) => {
                   const doc = pathDocs.get(name);
                   const hint = doc ? [doc.data_type, doc.description].filter(Boolean).join(" · ") : undefined;
@@ -196,7 +196,7 @@ export function RestBuilder({
             <div className="space-y-2">
               <h4 className="text-xs font-semibold tracking-wide text-muted uppercase">Query</h4>
               {requiredQuery.length > 0 && (
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-3 @md/main:grid-cols-2">
                   {requiredQuery.map((r) => renderField("q", r, queryValues, setQueryValues))}
                 </div>
               )}
@@ -206,7 +206,7 @@ export function RestBuilder({
                     Parâmetros opcionais ({optionalQuery.length}){" "}
                     <span className="text-muted">— preencha apenas os que precisar</span>
                   </summary>
-                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div className="mt-3 grid gap-3 @md/main:grid-cols-2">
                     {optionalQuery.map((r) => renderField("q", r, queryValues, setQueryValues))}
                   </div>
                 </details>
@@ -218,14 +218,14 @@ export function RestBuilder({
             <div className="space-y-2">
               <h4 className="text-xs font-semibold tracking-wide text-muted uppercase">Headers documentados</h4>
               {requiredHeaders.length > 0 && (
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-3 @md/main:grid-cols-2">
                   {requiredHeaders.map((r) => renderField("h", r, headerValues, setHeaderValues))}
                 </div>
               )}
               {optionalHeaders.length > 0 && (
                 <details className="rounded-md border border-border bg-surface-2 p-3">
                   <summary className="cursor-pointer text-xs">Headers opcionais ({optionalHeaders.length})</summary>
-                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div className="mt-3 grid gap-3 @md/main:grid-cols-2">
                     {optionalHeaders.map((r) => renderField("h", r, headerValues, setHeaderValues))}
                   </div>
                 </details>

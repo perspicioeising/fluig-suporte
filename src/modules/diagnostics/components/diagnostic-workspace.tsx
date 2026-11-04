@@ -149,8 +149,8 @@ export function DiagnosticWorkspace({
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
-      <aside aria-label="Diagnósticos anteriores" className="space-y-2 rounded-lg border border-border bg-surface p-3 lg:max-h-[calc(100vh-12rem)] lg:overflow-auto">
+    <div className="grid gap-4 @2xl/main:grid-cols-[16rem_minmax(0,1fr)]">
+      <aside aria-label="Diagnósticos anteriores" className="space-y-2 rounded-lg border border-border bg-surface p-3 @2xl/main:max-h-[calc(100vh-12rem)] @2xl/main:overflow-auto">
         <Link
           href="/diagnostico"
           className="flex w-full items-center justify-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-surface-2"
@@ -224,7 +224,7 @@ export function DiagnosticWorkspace({
             </p>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-3">
+          <div className="grid gap-3 @xl/main:grid-cols-3">
             <div className="space-y-1">
               <label htmlFor="diag-category" className="text-xs font-medium">Tipo de problema</label>
               <select id="diag-category" value={category} onChange={(e) => setCategory(e.target.value as (typeof CATEGORIES)[number])} disabled={viewingSaved} className={fieldClass}>

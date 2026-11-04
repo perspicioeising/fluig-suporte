@@ -60,7 +60,7 @@ export function CreateEnvironmentForm() {
       className="space-y-4 rounded-lg border border-border bg-surface p-4"
     >
       <h2 className="text-sm font-medium">Novo ambiente</h2>
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 @xl/main:grid-cols-2">
         <Field
           id="name"
           label="Nome"
@@ -110,7 +110,7 @@ function CredentialsForm({ env }: { env: EnvironmentSummary }) {
     <div className="space-y-3">
       <form ref={formRef} action={action} className="space-y-3" autoComplete="off">
         <input type="hidden" name="id" value={env.id} />
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-3 @xl/main:grid-cols-2">
           {env.auth_type === "basic" && (
             <>
               <Field id={`u-${env.id}`} name="username" label="Usuário" errors={e?.username} autoComplete="off" />
@@ -118,7 +118,7 @@ function CredentialsForm({ env }: { env: EnvironmentSummary }) {
             </>
           )}
           {env.auth_type === "bearer" && (
-            <Field id={`t-${env.id}`} name="token" label="Token" type="password" errors={e?.token} autoComplete="off" className="md:col-span-2" />
+            <Field id={`t-${env.id}`} name="token" label="Token" type="password" errors={e?.token} autoComplete="off" className="@xl/main:col-span-2" />
           )}
           {env.auth_type === "header" && (
             <>
@@ -188,7 +188,7 @@ export function EnvironmentCard({ env }: { env: EnvironmentSummary }) {
         <summary className="cursor-pointer text-sm text-accent">Editar ambiente</summary>
         <form action={action} className="mt-3 space-y-4">
           <input type="hidden" name="id" value={env.id} />
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 @xl/main:grid-cols-2">
             <Field id={`n-${env.id}`} name="name" label="Nome" defaultValue={env.name} errors={state?.errors?.name} />
             <Field id={`b-${env.id}`} name="base_url" label="URL base" defaultValue={env.base_url} errors={state?.errors?.base_url} />
             <AuthSelect defaultValue={env.auth_type} />

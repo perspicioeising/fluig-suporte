@@ -68,7 +68,7 @@ export function CatalogFilters({
       e.preventDefault();
       navigate(values, true);
     }}>
-      <div className="flex flex-col gap-2 lg:flex-row">
+      <div className="flex flex-col gap-2 @2xl/main:flex-row">
         <label className="sr-only" htmlFor="q">Buscar no catálogo</label>
         <input
           id="q"

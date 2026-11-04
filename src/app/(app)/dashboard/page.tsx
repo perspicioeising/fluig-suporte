@@ -1,9 +1,11 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ArrowRight, BookOpen, FileCode2, Send, Server } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { NAV_ITEMS } from "@/modules/navigation/nav-items";
 import { cn } from "@/lib/utils";
+import { LoadingState } from "@/components/ui/loading-state";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -19,9 +21,7 @@ export default function DashboardPage() {
 
       <Suspense
         fallback={
-          <p role="status" className="text-sm text-muted">
-            Carregando resumo...
-          </p>
+          <LoadingState label="Carregando resumo..." />
         }
       >
         <Summary />
@@ -31,18 +31,26 @@ export default function DashboardPage() {
         <h2 id="modulos" className="text-sm font-medium text-muted">
           Módulos
         </h2>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 @md/main:grid-cols-2 @5xl/main:grid-cols-3">
           {modules.map(({ href, label, description, icon: Icon }) => (
             <Link
               key={href}
               href={href}
-              className="group rounded-lg border border-border bg-surface p-4 hover:border-accent"
+              className="group flex gap-3 rounded-lg border border-border bg-surface p-4 transition-colors hover:border-accent/60 hover:bg-surface-2"
             >
-              <div className="flex items-center gap-2">
-                <Icon className="size-4 text-accent" aria-hidden />
-                <h3 className="text-sm font-medium">{label}</h3>
-              </div>
-              <p className="mt-2 text-sm text-muted">{description}</p>
+              <span className="grid size-9 shrink-0 place-items-center rounded-md bg-accent/10 text-accent transition-colors group-hover:bg-accent/20">
+                <Icon className="size-4.5" aria-hidden />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center gap-1 text-sm font-medium">
+                  {label}
+                  <ArrowRight
+                    className="size-3.5 -translate-x-1 text-accent opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100 motion-reduce:transition-none"
+                    aria-hidden
+                  />
+                </span>
+                <span className="mt-1 block text-sm text-muted">{description}</span>
+              </span>
             </Link>
           ))}
         </div>
@@ -81,9 +89,9 @@ async function Summary() {
   ]);
 
   const stats = [
-    { label: "Ambientes", value: environments.count ?? 0, href: "/configuracoes" },
-    { label: "Requisições salvas", value: savedRequests.count ?? 0, href: "/tester", hint: `${collections.count ?? 0} coleções` },
-    { label: "WSDLs importados", value: wsdls.count ?? 0, href: "/soap" },
+    { label: "Ambientes", value: environments.count ?? 0, href: "/configuracoes", icon: Server, empty: "Cadastre o primeiro ambiente" },
+    { label: "Requisições salvas", value: savedRequests.count ?? 0, href: "/tester", icon: Send, hint: `${collections.count ?? 0} coleções`, empty: "Salve requisições no API Tester" },
+    { label: "WSDLs importados", value: wsdls.count ?? 0, href: "/soap", icon: FileCode2, empty: "Importe um WSDL no laboratório SOAP" },
   ];
 
   return (
@@ -92,25 +100,47 @@ async function Summary() {
         Resumo
       </h2>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 @md/main:grid-cols-3">
         {stats.map((s) => (
-          <Link key={s.label} href={s.href} className="rounded-lg border border-border bg-surface p-4 hover:border-accent">
-            <p className="text-sm text-muted">{s.label}</p>
-            <p className="mt-1 text-2xl font-semibold">{s.value}</p>
-            {s.hint && <p className="text-xs text-muted">{s.hint}</p>}
+          <Link
+            key={s.label}
+            href={s.href}
+            className="group rounded-lg border border-border bg-surface p-4 transition-colors hover:border-accent/60 hover:bg-surface-2"
+          >
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted">{s.label}</p>
+              <s.icon className="size-4 text-muted transition-colors group-hover:text-accent" aria-hidden />
+            </div>
+            <p className="mt-1 text-2xl font-semibold tabular-nums">{s.value}</p>
+            <p className="text-xs text-muted">{s.value === 0 ? s.empty : (s.hint ?? " ")}</p>
           </Link>
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 @2xl/main:grid-cols-2">
         <div className="rounded-lg border border-border bg-surface p-4">
-          <h3 className="text-sm font-medium">Últimas requisições</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium">Últimas requisições</h3>
+            <Link href="/historico" className="text-xs text-accent hover:underline">Ver histórico</Link>
+          </div>
           {(history.data?.length ?? 0) === 0 ? (
-            <p className="mt-2 text-sm text-muted">Nenhuma requisição executada ainda.</p>
+            <p className="mt-3 text-sm text-muted">
+              Nenhuma requisição executada ainda.{" "}
+              <Link href="/tester" className="text-accent hover:underline">Abrir o API Tester</Link> ou{" "}
+              <Link href="/catalogo" className="inline-flex items-center gap-1 text-accent hover:underline">
+                <BookOpen className="size-3.5" aria-hidden />
+                explorar o catálogo
+              </Link>
+              .
+            </p>
           ) : (
             <ul className="mt-2 divide-y divide-border">
               {history.data!.map((h) => (
-                <li key={h.id as string} className="flex items-center gap-2 py-1.5 text-sm">
+                <li key={h.id as string}>
+                  <Link
+                    href={`/historico?item=${h.id}`}
+                    className="-mx-2 flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-surface-2"
+                  >
                   <span className="w-12 shrink-0 font-mono text-[10px] font-semibold text-accent">{h.method as string}</span>
                   <span className={cn("w-9 shrink-0 font-mono text-xs", statusClass(h.status_code as number | null))}>
                     {(h.status_code as number | null) ?? "ERR"}
@@ -125,6 +155,7 @@ async function Summary() {
                     })()}
                   </span>
                   <span className="shrink-0 text-xs text-muted">{when(h.created_at as string)}</span>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -132,7 +163,10 @@ async function Summary() {
         </div>
 
         <div className="rounded-lg border border-border bg-surface p-4">
-          <h3 className="text-sm font-medium">Últimos diagnósticos</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium">Últimos diagnósticos</h3>
+            <Link href="/diagnostico" className="text-xs text-accent hover:underline">Novo diagnóstico</Link>
+          </div>
           {(diagnostics.data?.length ?? 0) === 0 ? (
             <p className="mt-2 text-sm text-muted">Nenhum diagnóstico realizado.</p>
           ) : (

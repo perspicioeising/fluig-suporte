@@ -157,8 +157,8 @@ export function AssistantChat({
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
-      <aside aria-label="Conversas" className="space-y-2 rounded-lg border border-border bg-surface p-3 lg:max-h-[calc(100vh-12rem)] lg:overflow-auto">
+    <div className="grid gap-4 @2xl/main:grid-cols-[16rem_minmax(0,1fr)]">
+      <aside aria-label="Conversas" className="space-y-2 rounded-lg border border-border bg-surface p-3 @2xl/main:max-h-[calc(100vh-12rem)] @2xl/main:overflow-auto">
         <button
           type="button"
           onClick={newConversation}
@@ -207,7 +207,7 @@ export function AssistantChat({
       </aside>
 
       <section aria-label="Conversa" className="flex min-w-0 flex-col rounded-lg border border-border bg-surface">
-        <div className="flex-1 space-y-5 overflow-y-auto p-4 lg:max-h-[calc(100vh-18rem)] lg:min-h-[24rem]" aria-live="polite" aria-busy={streaming}>
+        <div className="flex-1 space-y-5 overflow-y-auto p-4 @2xl/main:max-h-[calc(100vh-18rem)] @2xl/main:min-h-[24rem]" aria-live="polite" aria-busy={streaming}>
           {messages.length === 0 ? (
             <div className="space-y-4 py-6">
               <div>
@@ -217,7 +217,7 @@ export function AssistantChat({
                   citando as fontes. Quando não houver informação suficiente, eu aviso.
                 </p>
               </div>
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-2 @md/main:grid-cols-2">
                 {SUGGESTIONS.map((s) => (
                   <button
                     key={s}

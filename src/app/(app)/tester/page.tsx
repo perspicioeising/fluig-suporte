@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { getTesterData } from "@/modules/tester/queries";
 import { parseTesterPrefill } from "@/modules/builder/tester-link";
 import { TesterWorkspace } from "@/modules/tester/components/tester-workspace";
+import { LoadingState } from "@/components/ui/loading-state";
 
 export const metadata: Metadata = { title: "API Tester" };
 
@@ -22,9 +23,7 @@ export default function TesterPage({ searchParams }: PageProps<"/tester">) {
 
       <Suspense
         fallback={
-          <p role="status" className="text-sm text-muted">
-            Carregando...
-          </p>
+          <LoadingState label="Carregando..." />
         }
       >
         <TesterContent searchParams={searchParams} />

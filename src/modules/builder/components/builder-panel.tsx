@@ -137,7 +137,7 @@ function SoapBuilder({ data, baseUrl }: { data: BuilderEntry; baseUrl?: string }
             Usuário e senha entram como marcadores (<code className="font-mono">SEU_USUARIO</code>/
             <code className="font-mono">SUA_SENHA</code>) nos exemplos.
           </p>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 @md/main:grid-cols-2">
             {scalarParams.map((p) => (
               <div key={p.name} className="space-y-1">
                 <label htmlFor={`a-${p.name}`} className="text-xs font-medium">

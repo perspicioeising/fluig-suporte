@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { listEnvironments } from "@/modules/environments/queries";
 import { getOperations, listWsdls } from "@/modules/soap/queries";
 import { SoapLab } from "@/modules/soap/components/soap-lab";
+import { LoadingState } from "@/components/ui/loading-state";
 
 export const metadata: Metadata = { title: "Webservices SOAP" };
 
@@ -22,9 +23,7 @@ export default function SoapPage({ searchParams }: PageProps<"/soap">) {
 
       <Suspense
         fallback={
-          <p role="status" className="text-sm text-muted">
-            Carregando...
-          </p>
+          <LoadingState label="Carregando..." />
         }
       >
         <SoapContent searchParams={searchParams} />

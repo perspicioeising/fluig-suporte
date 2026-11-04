@@ -1,3 +1,4 @@
+import { LoadingState } from "@/components/ui/loading-state";
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { listEnvironments } from "@/modules/environments/queries";
@@ -23,9 +24,7 @@ export default function SettingsPage() {
 
       <Suspense
         fallback={
-          <p role="status" className="text-sm text-muted">
-            Carregando ambientes...
-          </p>
+          <LoadingState label="Carregando ambientes..." />
         }
       >
         <EnvironmentList />

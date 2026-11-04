@@ -10,6 +10,7 @@ import { getBuilderEntry } from "@/modules/builder/queries";
 import { BuilderSearch } from "@/modules/builder/components/builder-search";
 import { BuilderPanel } from "@/modules/builder/components/builder-panel";
 import { cn } from "@/lib/utils";
+import { LoadingState } from "@/components/ui/loading-state";
 
 export const metadata: Metadata = { title: "Construtor" };
 
@@ -29,9 +30,7 @@ export default function BuilderPage({ searchParams }: PageProps<"/construtor">) 
 
       <Suspense
         fallback={
-          <p role="status" className="text-sm text-muted">
-            Carregando...
-          </p>
+          <LoadingState label="Carregando..." />
         }
       >
         <BuilderContent searchParams={searchParams} />
@@ -61,8 +60,8 @@ async function BuilderContent({ searchParams }: { searchParams: Promise<RawSearc
   if (search.topic) baseParams.set("topic", search.topic);
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]">
-      <aside aria-label="Escolher API" className="space-y-3 rounded-lg border border-border bg-surface p-3 lg:max-h-[calc(100vh-12rem)] lg:overflow-auto">
+    <div className="grid gap-4 @2xl/main:grid-cols-[20rem_minmax(0,1fr)]">
+      <aside aria-label="Escolher API" className="space-y-3 rounded-lg border border-border bg-surface p-3 @2xl/main:max-h-[calc(100vh-12rem)] @2xl/main:overflow-auto">
         <BuilderSearch
           initial={{ q: search.q ?? "", kind: search.kind ?? "", method: search.method ?? "", topic: search.topic ?? "" }}
           entryId={entryId}

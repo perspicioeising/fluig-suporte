@@ -3,6 +3,7 @@ import * as z from "zod";
 import type { Metadata } from "next";
 import { getConversationMessages, listConversations } from "@/modules/assistant/queries";
 import { AssistantChat } from "@/modules/assistant/components/assistant-chat";
+import { LoadingState } from "@/components/ui/loading-state";
 
 export const metadata: Metadata = { title: "Assistente IA" };
 
@@ -21,9 +22,7 @@ export default function AssistantPage({ searchParams }: PageProps<"/assistente">
 
       <Suspense
         fallback={
-          <p role="status" className="text-sm text-muted">
-            Carregando...
-          </p>
+          <LoadingState label="Carregando..." />
         }
       >
         <AssistantContent searchParams={searchParams} />

@@ -40,7 +40,7 @@ export function SoapLab({
   const selectedWsdl = wsdls.find((w) => w.id === selectedId) ?? null;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[19rem_minmax(0,1fr)]">
+    <div className="grid gap-4 @2xl/main:grid-cols-[19rem_minmax(0,1fr)]">
       <div className="space-y-4">
         <aside aria-label="WSDLs importados" className="space-y-2 rounded-lg border border-border bg-surface p-3">
           <h2 className="text-sm font-medium">WSDLs importados</h2>

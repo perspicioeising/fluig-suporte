@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { listEnvironments } from "@/modules/environments/queries";
 import { getDiagnostic, listDiagnostics, listHistoryOptions } from "@/modules/diagnostics/queries";
 import { DiagnosticWorkspace } from "@/modules/diagnostics/components/diagnostic-workspace";
+import { LoadingState } from "@/components/ui/loading-state";
 
 export const metadata: Metadata = { title: "Diagnóstico" };
 
@@ -24,9 +25,7 @@ export default function DiagnosticPage({ searchParams }: PageProps<"/diagnostico
 
       <Suspense
         fallback={
-          <p role="status" className="text-sm text-muted">
-            Carregando...
-          </p>
+          <LoadingState label="Carregando..." />
         }
       >
         <DiagnosticContent searchParams={searchParams} />

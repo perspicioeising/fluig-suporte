@@ -186,7 +186,7 @@ export async function HistoryView({ searchParams }: { searchParams: Promise<RawS
         {userId && total > 0 && <DeleteFilteredButton filter={filter} filtered={filtered} />}
       </div>
 
-      <div className={cn("grid gap-4", detail && "xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]")}>
+      <div className={cn("grid gap-4", detail && "@5xl/main:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]")}>
         {rows.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border bg-surface p-6 text-sm text-muted">
             {filtered || filter.mine

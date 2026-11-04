@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { HistoryView } from "@/modules/history/components/history-view";
+import { LoadingState } from "@/components/ui/loading-state";
 
 export const metadata: Metadata = { title: "Histórico" };
 
@@ -17,9 +18,7 @@ export default function HistoryPage({ searchParams }: PageProps<"/historico">) {
 
       <Suspense
         fallback={
-          <p role="status" className="text-sm text-muted">
-            Carregando histórico...
-          </p>
+          <LoadingState label="Carregando histórico..." />
         }
       >
         <HistoryView searchParams={searchParams} />

@@ -1,3 +1,4 @@
+import { LoadingState } from "@/components/ui/loading-state";
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -27,9 +28,7 @@ export default function EntryPage({ params }: PageProps<"/catalogo/[id]">) {
       </Link>
       <Suspense
         fallback={
-          <p role="status" className="text-sm text-muted">
-            Carregando...
-          </p>
+          <LoadingState label="Carregando..." />
         }
       >
         <EntryDetail params={params} />

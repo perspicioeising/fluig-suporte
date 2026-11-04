@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { CatalogView } from "@/modules/catalog/components/catalog-view";
+import { LoadingState } from "@/components/ui/loading-state";
 
 export const metadata: Metadata = { title: "APIs Fluig" };
 
@@ -17,9 +18,7 @@ export default function CatalogPage({ searchParams }: PageProps<"/catalogo">) {
 
       <Suspense
         fallback={
-          <p role="status" className="text-sm text-muted">
-            Carregando catálogo...
-          </p>
+          <LoadingState label="Carregando catálogo..." />
         }
       >
         <CatalogView searchParams={searchParams} />
