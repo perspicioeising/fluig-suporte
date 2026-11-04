@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { isCrossSiteRequest } from "@/lib/security/same-origin";
 import { executeRequest } from "@/modules/tester/execute";
 import { ExecuteSchema } from "@/modules/tester/schemas";
 
@@ -8,6 +9,9 @@ export const maxDuration = 60;
 const MAX_BODY_BYTES = 1_500_000;
 
 export async function POST(request: NextRequest) {
+  if (isCrossSiteRequest(request.headers)) {
+    return NextResponse.json({ error: "Origem não autorizada." }, { status: 403 });
+  }
   // Só JSON: formulários de outros sites não conseguem enviar este tipo sem preflight.
   if (!request.headers.get("content-type")?.includes("application/json")) {
     return NextResponse.json({ error: "Content-Type deve ser application/json." }, { status: 415 });

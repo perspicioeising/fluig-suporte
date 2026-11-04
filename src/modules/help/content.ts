@@ -41,7 +41,7 @@ O **Fluig Integration Studio** é uma ferramenta para desenvolvedores e analista
 | **Webservices SOAP** | Importa WSDLs, mostra serviços e operações, monta envelopes e testa chamadas SOAP. |
 | **Assistente IA** | Responde perguntas com base na documentação oficial importada, citando as fontes. |
 | **Diagnóstico** | Analisa um erro de integração e sugere causas, validações e próximos passos. |
-| **Histórico** | Registro das execuções e dos diagnósticos. |
+| **Histórico** | Todas as execuções REST e SOAP do workspace, com filtros, detalhe, reabertura no API Tester e exclusão dos seus registros. |
 | **Configurações** | Cadastro dos ambientes Fluig e das credenciais. |
 
 ### Princípios que valem para o app inteiro
@@ -375,12 +375,25 @@ O app registra o que você executa para facilitar a auditoria e a repetição de
 
 | O quê | Onde ver | Como é guardado |
 |---|---|---|
-| **Execuções REST e SOAP** | Barra lateral do API Tester (últimas 25) e anexo do Diagnóstico | Método, URL (parâmetros sensíveis mascarados), headers (valores sensíveis mascarados), status, tempo e até 100 KB da resposta. |
+| **Execuções REST e SOAP** | Tela **Histórico** (todas, com filtros), barra lateral do API Tester (últimas 25) e anexo do Diagnóstico | Método, URL (parâmetros sensíveis mascarados), headers (valores sensíveis mascarados), status, tempo e até 100 KB da resposta. |
 | **Requisições salvas** | Aba **Coleções** do API Tester | Método, caminho, parâmetros, headers e corpo que você salvou. |
 | **Conversas do assistente** | Lista lateral do Assistente IA | Perguntas, respostas e fontes citadas. |
 | **Diagnósticos** | Lista lateral do Diagnóstico | Texto (já com segredos ocultados), resultado e fontes. |
 
-No SOAP, o histórico guarda o envelope **com os marcadores** ‵{{ENV_USERNAME}}‵/‵{{ENV_PASSWORD}}‵ e oculta elementos sensíveis (senha, token...). Registros do histórico podem ser removidos pelo próprio usuário.
+No SOAP, o histórico guarda o envelope **com os marcadores** ‵{{ENV_USERNAME}}‵/‵{{ENV_PASSWORD}}‵ e oculta elementos sensíveis (senha, token...).
+
+### Tela Histórico
+
+1. **Buscar:** digite parte da URL, do método, da operação SOAP ou da mensagem de erro. A lista atualiza enquanto você digita e não diferencia maiúsculas de minúsculas.
+2. **Filtrar** por tipo (REST ou SOAP), resultado (**Sucesso 2xx** ou **Erro ou sem resposta**), período (24 horas, 7 ou 30 dias), ambiente e **Somente as minhas**.
+3. **Clique em um registro** para ver o detalhe: headers e corpo da requisição e da resposta (com valores sensíveis mascarados).
+4. No detalhe:
+   - **Reabrir no API Tester** (REST): leva ambiente, método, caminho, parâmetros, headers e corpo. Valores que foram mascarados (‵***‵) voltam vazios e desligados, para você preencher de novo.
+   - **Diagnosticar** abre o Diagnóstico com o registro anexado.
+   - **Excluir** remove o registro.
+5. **Excluir meus registros filtrados** remove de uma vez **todos os seus** registros que correspondem aos filtros, inclusive os de outras páginas. Sem filtros, o botão vira **Excluir todo o meu histórico**. Sempre há uma confirmação antes.
+
+> Você vê os registros de todos os membros do workspace (marcados como **outro membro**), mas só pode excluir os seus. A exclusão não pode ser desfeita.
 `,
   },
   {
@@ -436,9 +449,15 @@ O login usa **Supabase Auth**. Os dados são isolados por **workspace** com **Ro
 - **Diagnóstico:** o texto que você colou **depois** da ocultação de segredos, os sinais detectados, os dados não sensíveis do ambiente (nome, host, tipo de autenticação) e a requisição anexada (também com segredos ocultados).
 - Nenhuma credencial cadastrada é enviada à IA.
 
+### Proteções do navegador
+
+- As rotas internas do app recusam chamadas vindas de **outros sites** (proteção contra CSRF), além de exigirem sessão válida e JSON.
+- O app envia headers de segurança: **Content-Security-Policy** (o navegador só se conecta ao próprio app e ao Supabase), proibição de abrir o app dentro de outro site (**frame-ancestors**/**X-Frame-Options**), **nosniff**, **Referrer-Policy** e **HSTS**.
+- As chamadas ao Fluig e à IA saem **do servidor**, nunca do navegador.
+
 ### Auditoria
 
-Execuções e diagnósticos ficam registrados no histórico, com valores sensíveis mascarados.
+Execuções e diagnósticos ficam registrados no histórico, com valores sensíveis mascarados. Cada usuário pode excluir apenas os próprios registros.
 `,
   },
   {
@@ -454,6 +473,7 @@ Execuções e diagnósticos ficam registrados no histórico, com valores sensív
 | Corpo de requisição | até 1 MB |
 | Histórico guardado | até 100 KB de resposta e 20 KB de corpo de requisição por execução |
 | Histórico exibido no API Tester | últimas 25 execuções |
+| Tela Histórico | 25 registros por página |
 | Importação de WSDL | arquivo de até 2 MB; até 40 serviços por importação; até 12 documentos (WSDL e imports) por serviço |
 | Assistente IA | 4.000 caracteres por pergunta; 8 perguntas/minuto; 300/dia por usuário |
 | Diagnóstico | 20.000 caracteres; 5 diagnósticos/minuto; 100/dia por usuário |
@@ -611,6 +631,14 @@ npm run ingest -- --source=all --dry-run   # simula, sem gravar
 Para o TDN, salve a página (Salvar como HTML) na pasta ‵documentos/‵ e rode ‵--source=tdn‵. As importações são **idempotentes**: rodar de novo não duplica dados.
 
 Em rede corporativa com inspeção TLS, o comando já usa o repositório de certificados do sistema (‵--use-system-ca‵).
+
+### Testes automatizados
+
+‵‵‵bash
+npm test
+‵‵‵
+
+Roda os testes com o executor nativo do Node (sem dependências extras): criptografia das credenciais, bloqueio de SSRF, assinatura OAuth 1.0a (vetor da RFC 5849), ocultação de segredos, proteção contra CSRF, leitura de WSDL e de SOAP Fault, geradores de código, ponte Construtor → API Tester, filtros do catálogo e do histórico. Os testes não acessam o banco nem o Fluig.
 `,
   },
 ];

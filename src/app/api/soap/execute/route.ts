@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { isCrossSiteRequest } from "@/lib/security/same-origin";
 import { executeSoap } from "@/modules/soap/execute";
 import { SoapExecuteSchema } from "@/modules/soap/schemas";
 
@@ -7,6 +8,9 @@ export const maxDuration = 60;
 const MAX_BODY_BYTES = 1_500_000;
 
 export async function POST(request: NextRequest) {
+  if (isCrossSiteRequest(request.headers)) {
+    return NextResponse.json({ error: "Origem não autorizada." }, { status: 403 });
+  }
   if (!request.headers.get("content-type")?.includes("application/json")) {
     return NextResponse.json({ error: "Content-Type deve ser application/json." }, { status: 415 });
   }

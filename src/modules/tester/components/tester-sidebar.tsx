@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { deleteCollection, deleteSavedRequest } from "../actions";
@@ -113,6 +114,11 @@ export function TesterSidebar({
         <p className="text-xs text-muted">Nenhuma requisição executada ainda.</p>
       ) : (
         <ul>
+          <li className="px-2 pb-1 text-xs">
+            <Link href="/historico?kind=rest" className="text-accent hover:underline">
+              Ver histórico completo (filtros e exclusão)
+            </Link>
+          </li>
           {history.map((item) => (
             <li key={item.id}>
               <button
