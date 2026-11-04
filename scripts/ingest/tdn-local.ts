@@ -18,7 +18,12 @@ import type {
  * ajs-page-id presente no próprio HTML.
  */
 
-type PageConfig = { source: SourceDefinition; kind: "soap" | "docs" };
+type PageConfig = {
+  source: SourceDefinition;
+  kind: "soap" | "docs";
+  /** Páginas-índice: guarda também "título: URL" de cada link para subpáginas do TDN. */
+  includeLinks?: boolean;
+};
 
 // Fontes já cadastradas pela migration 0002 mantêm o slug original.
 const PAGES: Record<string, PageConfig> = {
@@ -37,6 +42,11 @@ const PAGES: Record<string, PageConfig> = {
   "239041233": {
     kind: "docs",
     source: { slug: "tdn-239041233", name: "TDN - Autorização para client de Serviços REST", kind: "docs", url: "https://tdn.totvs.com/pages/viewpage.action?pageId=239041233" },
+  },
+  "840778303": {
+    kind: "docs",
+    includeLinks: true,
+    source: { slug: "tdn-840778303", name: "TDN - Integrações (índice)", kind: "docs", url: "https://tdn.totvs.com/pages/viewpage.action?pageId=840778303" },
   },
   "662867789": {
     kind: "soap",
@@ -287,6 +297,25 @@ export function ingestTdnLocal(dir: string): ParseResult {
       }
     } else {
       const chunks = chunkWikiContent($, pageTitle);
+
+      if (config.includeLinks) {
+        const seen = new Set<string>();
+        const lines: string[] = [];
+        $("#main-content .wiki-content a[href]").each((_, a) => {
+          const href = $(a).attr("href") ?? "";
+          const label = squash($(a).text());
+          if (!label || seen.has(href) || !/^https:\/\/tdn\.totvs\.com\//.test(href)) return;
+          seen.add(href);
+          lines.push(`- ${label}: ${href}`);
+        });
+        if (lines.length > 0) {
+          chunks.push({
+            headingPath: ["Páginas relacionadas"],
+            content: `${pageTitle} > Páginas relacionadas\n\nPáginas de documentação oficial sobre integração listadas no TDN:\n${lines.join("\n")}`,
+          });
+        }
+      }
+
       console.log(`  ${file}: ${chunks.length} trechos`);
       documents.push({ sourceSlug: config.source.slug, url: pageUrl, title: pageTitle, chunks });
     }

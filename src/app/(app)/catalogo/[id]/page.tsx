@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { ArrowLeft, ExternalLink, Send } from "lucide-react";
+import { ArrowLeft, ExternalLink, Send, Wrench } from "lucide-react";
 import { getEntry, parseExamples } from "@/modules/catalog/queries";
 import {
   KindBadge,
@@ -114,6 +114,16 @@ async function EntryDetail({ params }: { params: Promise<{ id: string }> }) {
           )}
         </Block>
       )}
+
+      <p className="text-sm">
+        <Link
+          href={`/construtor?entry=${entry.id}`}
+          className="inline-flex items-center gap-1 rounded-md bg-accent px-3 py-1.5 font-medium text-accent-foreground hover:opacity-90"
+        >
+          <Wrench className="size-4" aria-hidden />
+          Gerar código
+        </Link>
+      </p>
 
       {(entry.kind === "rest_new" || entry.kind === "rest_old") &&
         entry.path &&

@@ -16,6 +16,8 @@ export type ParamNode = {
   children?: ParamNode[];
   /** Tipo recursivo: a expansão foi interrompida aqui. */
   recursive?: boolean;
+  /** Tipo sem estrutura conhecida: o exemplo traz um comentário em vez de inventar campos. */
+  placeholder?: string;
 };
 
 export type MessageShape = {

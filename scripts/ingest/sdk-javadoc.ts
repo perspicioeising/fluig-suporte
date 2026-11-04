@@ -10,6 +10,7 @@ import type {
 
 const BASE = "https://api.fluig.com/old/sdk";
 const SERVICE_PACKAGE = "com/fluig/sdk/service/";
+const ENTRY_POINT_CLASS = "com/fluig/sdk/api/FluigAPI.html";
 
 export const SDK_SOURCE: SourceDefinition = {
   slug: "api-fluig-sdk",
@@ -142,7 +143,8 @@ export async function ingestSdk(limit?: number): Promise<ParseResult> {
       index("a")
         .map((_, a) => index(a).attr("href") ?? "")
         .get()
-        .filter((h) => h.startsWith(SERVICE_PACKAGE) && h.endsWith(".html")),
+        // Serviços do SDK + a classe FluigAPI (ponto de entrada: new FluigAPI().getXService()).
+        .filter((h) => (h.startsWith(SERVICE_PACKAGE) || h === ENTRY_POINT_CLASS) && h.endsWith(".html")),
     ),
   ].sort();
   const targets = limit ? hrefs.slice(0, limit) : hrefs;

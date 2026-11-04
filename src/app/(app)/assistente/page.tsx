@@ -37,16 +37,21 @@ async function AssistantContent({ searchParams }: { searchParams: Promise<RawSea
   const param = Array.isArray(raw.c) ? raw.c[0] : raw.c;
   const conversationId = z.uuid().safeParse(param).success ? (param as string) : null;
 
+  // ?ask=... pré-preenche a pergunta (vem do Construtor); nunca é enviada automaticamente.
+  const askParam = Array.isArray(raw.ask) ? raw.ask[0] : raw.ask;
+  const initialInput = (askParam ?? "").slice(0, 500);
+
   const conversations = await listConversations();
   const activeId = conversationId && conversations.some((c) => c.id === conversationId) ? conversationId : null;
   const messages = activeId ? await getConversationMessages(activeId) : [];
 
   return (
     <AssistantChat
-      key={activeId ?? "new"}
+      key={activeId ?? `new-${initialInput}`}
       initialConversationId={activeId}
       initialMessages={messages}
       initialConversations={conversations}
+      initialInput={initialInput}
     />
   );
 }

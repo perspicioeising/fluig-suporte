@@ -22,9 +22,11 @@ const SOAP_NS = {
 
 /* ------------------------------ Geração ---------------------------------- */
 
-function sampleScalar(type: string, name: string): string {
+function sampleScalar(type: string, name: string, values?: Record<string, string>): string {
   if (USERNAME_NAMES.test(name) && /string/i.test(type)) return ENV_USERNAME;
   if (PASSWORD_NAMES.test(name) && /string/i.test(type)) return ENV_PASSWORD;
+  const provided = values?.[name];
+  if (provided !== undefined && provided !== "") return provided;
 
   switch (type.split(":").pop()) {
     case "int":
@@ -74,43 +76,55 @@ function comments(param: ParamNode, indent: string): string[] {
   return out;
 }
 
-function renderParam(param: ParamNode, prefixes: Prefixes, depth: number, stack: string[]): string {
+function renderParam(
+  param: ParamNode,
+  prefixes: Prefixes,
+  depth: number,
+  stack: string[],
+  values?: Record<string, string>,
+): string {
   const indent = "  ".repeat(depth);
   const tag = param.qualified && param.ns ? `${prefixes.get(param.ns)}:${param.name}` : param.name;
   const lines = comments(param, indent);
 
-  if (param.children?.length) {
+  if (param.placeholder) {
+    lines.push(`${indent}<${tag}><!--${param.placeholder}--></${tag}>`);
+  } else if (param.children?.length) {
     if (param.recursive || stack.includes(param.type)) {
       lines.push(`${indent}<${tag}/><!--Tipo recursivo (${param.type}) omitido no exemplo-->`);
     } else {
       lines.push(`${indent}<${tag}>`);
       for (const child of param.children) {
-        lines.push(renderParam(child, prefixes, depth + 1, [...stack, param.type]));
+        lines.push(renderParam(child, prefixes, depth + 1, [...stack, param.type], values));
       }
       lines.push(`${indent}</${tag}>`);
     }
   } else if (param.enum?.length) {
-    lines.push(`${indent}<${tag}>${esc(param.enum[0])}</${tag}>`);
+    const chosen = values?.[param.name] && param.enum.includes(values[param.name]) ? values[param.name] : param.enum[0];
+    lines.push(`${indent}<${tag}>${esc(chosen)}</${tag}>`);
   } else {
-    lines.push(`${indent}<${tag}>${esc(sampleScalar(param.type, param.name))}</${tag}>`);
+    lines.push(`${indent}<${tag}>${esc(sampleScalar(param.type, param.name, values))}</${tag}>`);
   }
   return lines.join("\n");
 }
 
-function renderBody(shape: MessageShape, prefixes: Prefixes): string {
+function renderBody(shape: MessageShape, prefixes: Prefixes, values?: Record<string, string>): string {
   if (!shape.wrapper) {
-    return shape.params.map((p) => renderParam(p, prefixes, 2, [])).join("\n");
+    return shape.params.map((p) => renderParam(p, prefixes, 2, [], values)).join("\n");
   }
   const tag = `${prefixes.get(shape.wrapper.ns)}:${shape.wrapper.name}`;
   if (shape.params.length === 0) return `    <${tag}/>`;
-  const inner = shape.params.map((p) => renderParam(p, prefixes, 3, [])).join("\n");
+  const inner = shape.params.map((p) => renderParam(p, prefixes, 3, [], values)).join("\n");
   return `    <${tag}>\n${inner}\n    </${tag}>`;
 }
 
-/** Monta o envelope de requisição de uma operação, com valores de exemplo. */
-export function buildSoapEnvelope(op: SoapOperation): string {
+/**
+ * Monta o envelope de requisição de uma operação, com valores de exemplo.
+ * `values`: valores informados pelo usuário para parâmetros escalares (por nome).
+ */
+export function buildSoapEnvelope(op: SoapOperation, values?: Record<string, string>): string {
   const prefixes = new Prefixes();
-  const body = renderBody(op.input, prefixes); // registra os namespaces usados
+  const body = renderBody(op.input, prefixes, values); // registra os namespaces usados
   const declarations = prefixes.declarations();
 
   return [
@@ -165,25 +179,41 @@ export function buildJavaScriptSample(input: SampleInput): string {
   ].join("\n");
 }
 
+const javaLiteral = (value: string) =>
+  '"' + value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\r/g, '\\r').replace(/\t/g, '\\t') + '"';
+
+/** Classe Java 11+ completa (java.net.http), sem bibliotecas externas. */
 export function buildJavaSample(input: SampleInput): string {
-  const xml = forSamples(input.envelope).replace(/\\/g, "\\\\").replace(/"""/g, '\\"\\"\\"');
+  const envelopeLines = forSamples(input.envelope)
+    .split('\n')
+    .map((line) => '                ' + javaLiteral(line))
+    .join(',\n');
+
   return [
-    `// Java 15+ (text block). Usa apenas a biblioteca padrão (java.net.http).`,
-    `String envelope = """`,
-    xml,
-    `""";`,
-    ``,
-    `HttpRequest request = HttpRequest.newBuilder()`,
-    `    .uri(URI.create(${JSON.stringify(input.endpoint)}))`,
-    `    .header("Content-Type", ${JSON.stringify(contentType(input))})`,
-    ...(input.soapVersion === "1.1" ? [`    .header("SOAPAction", ${JSON.stringify(`"${input.soapAction}"`)})`] : []),
-    `    .POST(HttpRequest.BodyPublishers.ofString(envelope))`,
-    `    .build();`,
-    ``,
-    `HttpResponse<String> response = HttpClient.newHttpClient()`,
-    `    .send(request, HttpResponse.BodyHandlers.ofString());`,
-    `System.out.println(response.statusCode() + " " + response.body());`,
-  ].join("\n");
+    '// Java 11+ (java.net.http). Sem bibliotecas externas.',
+    'import java.net.URI;',
+    'import java.net.http.HttpClient;',
+    'import java.net.http.HttpRequest;',
+    'import java.net.http.HttpResponse;',
+    '',
+    'public class FluigSoapExample {',
+    '    public static void main(String[] args) throws Exception {',
+    '        String envelope = String.join("\\n",',
+    envelopeLines + ');',
+    '',
+    '        HttpRequest request = HttpRequest.newBuilder()',
+    '                .uri(URI.create(' + javaLiteral(input.endpoint) + '))',
+    '                .header("Content-Type", ' + javaLiteral(contentType(input)) + ')',
+    ...(input.soapVersion === '1.1' ? ['                .header("SOAPAction", ' + javaLiteral('"' + input.soapAction + '"') + ')'] : []),
+    '                .POST(HttpRequest.BodyPublishers.ofString(envelope))',
+    '                .build();',
+    '',
+    '        HttpResponse<String> response = HttpClient.newHttpClient()',
+    '                .send(request, HttpResponse.BodyHandlers.ofString());',
+    '        System.out.println(response.statusCode() + " " + response.body());',
+    '    }',
+    '}',
+  ].join('\n');
 }
 
 /* ------------------------- Inspeção / segurança -------------------------- */

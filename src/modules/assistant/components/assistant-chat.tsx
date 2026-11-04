@@ -22,15 +22,17 @@ export function AssistantChat({
   initialConversationId,
   initialMessages,
   initialConversations,
+  initialInput = "",
 }: {
   initialConversationId: string | null;
   initialMessages: ChatMessage[];
   initialConversations: ConversationSummary[];
+  initialInput?: string;
 }) {
   const [conversationId, setConversationId] = useState(initialConversationId);
   const [conversations, setConversations] = useState(initialConversations);
   const [messages, setMessages] = useState<UiMessage[]>(initialMessages);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(initialInput);
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

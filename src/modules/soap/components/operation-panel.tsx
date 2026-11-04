@@ -14,28 +14,13 @@ import {
   ENV_USERNAME,
   prettyXml,
 } from "../envelope";
+import { resolveEndpoint } from "../endpoint";
 import { isReadOnlySoapName } from "../guard";
 import type { SoapExecuteResponse, SoapOperationRecord } from "../schemas";
 import { ParamTree } from "./param-tree";
 
 const fieldClass =
   "rounded-md border border-border bg-surface-2 px-3 py-2 text-sm placeholder:text-muted";
-
-/** Resolve o endpoint do WSDL contra a URL base do ambiente (o host do WSDL pode ser interno). */
-function resolveEndpoint(envBase: string | undefined, wsdlEndpoint: string | null) {
-  if (!wsdlEndpoint) return "";
-  if (!envBase) return wsdlEndpoint;
-  try {
-    const u = new URL(wsdlEndpoint);
-    const path = `${u.pathname}${u.search}`;
-    const base = new URL(envBase);
-    const basePath = base.pathname.replace(/\/+$/, "");
-    const prefixed = basePath !== "" && (path === basePath || path.startsWith(`${basePath}/`));
-    return prefixed ? `${base.origin}${path}` : `${envBase.replace(/\/+$/, "")}${path}`;
-  } catch {
-    return wsdlEndpoint;
-  }
-}
 
 export function OperationPanel({
   op,
