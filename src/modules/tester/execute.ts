@@ -127,7 +127,9 @@ export async function executeRequest(input: ExecuteInput): Promise<ExecuteOutcom
   }
 
   // 7. Histórico (auditoria). Falha aqui nunca bloqueia a resposta.
-  await supabase.from("request_history").insert({
+  const { data: saved } = await supabase
+    .from("request_history")
+    .insert({
     workspace_id: env.workspace_id,
     user_id: user.id,
     environment_id: env.id,
@@ -141,7 +143,9 @@ export async function executeRequest(input: ExecuteInput): Promise<ExecuteOutcom
     response_body: response.body.slice(0, MAX_STORED_BODY),
     duration_ms: response.durationMs,
     error: response.error ?? null,
-  });
+    })
+    .select("id")
+    .single();
 
-  return { ok: true, response };
+  return { ok: true, response: { ...response, historyId: (saved?.id as string | undefined) ?? null } };
 }

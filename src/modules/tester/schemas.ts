@@ -62,6 +62,8 @@ export type ExecuteResponse = {
   truncated: boolean;
   error?: string;
   url: string;
+  /** Registro correspondente em request_history (para o atalho de diagnóstico). */
+  historyId?: string | null;
 };
 
 export type SavedRequest = {

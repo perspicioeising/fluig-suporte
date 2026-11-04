@@ -4,6 +4,7 @@ import {
   FlaskConical,
   History,
   LayoutDashboard,
+  LifeBuoy,
   Send,
   Settings,
   Sparkles,
@@ -73,6 +74,12 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Configurações",
     description: "Ambientes Fluig, credenciais e preferências.",
     icon: Settings,
+  },
+  {
+    href: "/ajuda",
+    label: "Ajuda",
+    description: "Guia de uso, solução de problemas e glossário.",
+    icon: LifeBuoy,
   },
 ];
 

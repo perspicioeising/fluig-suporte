@@ -2,7 +2,7 @@
  * Importação da documentação oficial do Fluig para o catálogo.
  *
  * Uso:
- *   npm run ingest -- --source=rest-new|rest-old|sdk|tdn|all [--dry-run] [--limit=N] [--dir=documentos]
+ *   npm run ingest -- --source=rest-new|rest-old|sdk|tdn|help|all [--dry-run] [--limit=N] [--dir=documentos]
  *
  * --dry-run  baixa e interpreta, mas NÃO grava no banco.
  * --limit=N  (rest-old, sdk) processa só os N primeiros itens.
@@ -10,6 +10,7 @@
  */
 import { ensureSource, getAdminClient, persistDocuments, persistSource } from "./lib/db";
 import type { ParseResult } from "./lib/types";
+import { HELP_SOURCE, ingestHelp } from "./help";
 import { ingestRestNew, REST_NEW_SOURCE_SLUG } from "./rest-new";
 import { ingestRestOld, REST_OLD_SOURCE_SLUG } from "./rest-old";
 import { ingestSdk, SDK_SOURCE } from "./sdk-javadoc";
@@ -44,12 +45,13 @@ async function main() {
     { key: "rest-new", label: "REST novo (api.fluig.com/latest)", sourceSlug: REST_NEW_SOURCE_SLUG, run: ingestRestNew },
     { key: "rest-old", label: "REST antigo (api.fluig.com/old)", sourceSlug: REST_OLD_SOURCE_SLUG, run: () => ingestRestOld(limit) },
     { key: "sdk", label: "SDK (Javadoc em api.fluig.com/old/sdk)", sourceSlug: SDK_SOURCE.slug, run: () => ingestSdk(limit) },
+    { key: "help", label: "Guia de uso do aplicativo (src/modules/help)", sourceSlug: HELP_SOURCE.slug, run: async () => ingestHelp() },
     { key: "tdn", label: `SOAP e documentação conceitual (TDN salvo em ${dir})`, sourceSlug: SOAP_SOURCE_SLUG, run: async () => ingestTdnLocal(dir) },
   ];
 
   const selected = jobs.filter((j) => source === "all" || j.key === source);
   if (selected.length === 0) {
-    throw new Error(`Fonte desconhecida: "${source}". Use rest-new, rest-old, sdk, tdn ou all.`);
+    throw new Error(`Fonte desconhecida: "${source}". Use rest-new, rest-old, sdk, tdn, help ou all.`);
   }
 
   const db = dryRun ? null : getAdminClient();

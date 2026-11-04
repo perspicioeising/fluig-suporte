@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
+import { Stethoscope } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ExecuteResponse } from "../schemas";
 
@@ -59,6 +61,18 @@ export function ResponseView({ response }: { response: ExecuteResponse }) {
       {response.error && (
         <p role="alert" className="rounded-md border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
           {response.error}
+        </p>
+      )}
+
+      {response.historyId && (response.status === null || response.status >= 400 || "fault" in response) && (
+        <p className="text-sm">
+          <Link
+            href={`/diagnostico?history=${response.historyId}`}
+            className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 hover:bg-surface-2"
+          >
+            <Stethoscope className="size-4 text-accent" aria-hidden />
+            Diagnosticar este erro
+          </Link>
         </p>
       )}
 
