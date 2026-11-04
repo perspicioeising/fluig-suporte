@@ -160,9 +160,11 @@ O catálogo reúne entradas importadas da documentação oficial. Cada entrada m
 
 ### Como pesquisar
 
-1. Digite parte do nome, do caminho ou da descrição. Exemplos: ‵getCurrent‵, ‵ECMDatasetService‵, ‵/documents‵.
-2. Filtre pelo **tipo** se quiser.
-3. Clique em uma entrada para ver o detalhe. A lista é paginada (20 por página).
+1. Digite parte do nome, do caminho ou da descrição. A lista **atualiza enquanto você digita** e **não diferencia maiúsculas de minúsculas** (‵datasets‵, ‵Datasets‵ e ‵DATASETS‵ trazem o mesmo resultado). Com várias palavras, todas precisam aparecer, em qualquer ordem.
+2. Refine pelos filtros: **tipo** (REST novo/antigo, SOAP, SDK), **método HTTP** (GET, POST, PUT, PATCH, DELETE), **assunto** (Documentos, Usuários, Processos, Formulários, Datasets e outros) e **grupo** (a API, o serviço ou a classe oficial; escolha o tipo primeiro).
+3. Use **Limpar** para zerar a busca e os filtros.
+4. Clique em uma entrada para ver o detalhe. A lista é paginada (20 por página).
+> O **assunto** é uma classificação do próprio Studio, feita a partir do nome, do caminho e dos grupos oficiais da entrada, só para facilitar a navegação. Não vem da documentação oficial e uma entrada pode ter mais de um assunto. Os filtros de busca e de método também existem no **Construtor**.
 
 ### No detalhe da entrada
 
@@ -187,6 +189,7 @@ O Construtor gera exemplos prontos a partir de uma entrada do catálogo. **Ele u
 2. Escolha o **ambiente** no seletor. Ele define a URL base do código. Sem ambiente, o código usa o marcador ‵https://SEU_FLUIG‵. **Credenciais reais nunca entram no código.**
 3. Preencha os **valores do exemplo** (parâmetros de caminho, query, corpo ou argumentos). O código muda conforme você digita.
 4. Use as abas para escolher a linguagem e **Copiar**.
+5. Em entradas REST, **Abrir no API Tester** leva para o Tester o ambiente, o método, o caminho (com os valores de caminho já aplicados), os parâmetros de query e o corpo que você preencheu. Os parâmetros **obrigatórios** segundo a documentação aparecem primeiro e marcados com ‵*‵; os opcionais ficam recolhidos em “Parâmetros opcionais”. No Tester, parâmetros obrigatórios vazios geram um aviso e marcadores ‵{param}‵ não resolvidos bloqueiam o envio.
 
 ### O que é gerado
 
@@ -588,6 +591,7 @@ Na Vercel, cadastre as mesmas variáveis. No Supabase, em **Authentication > URL
 4. ‵20261104000004_workspace_data.sql‵ (ambientes, coleções, histórico, SOAP, IA, diagnósticos)
 5. ‵20261104000005_parameter_argument_location.sql‵ (argumentos de métodos SOAP/SDK)
 6. ‵20261104000006_kb_fulltext_search.sql‵ (busca do assistente)
+7. ‵20261104000007_catalog_topics.sql‵ (assuntos do catálogo); depois rode ‵npm run ingest -- --source=topics‵ para classificar as entradas já importadas
 
 Todas são idempotentes.
 

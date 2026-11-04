@@ -13,6 +13,10 @@ export const KeyValueSchema = z.object({
   key: z.string().max(200),
   value: z.string().max(4000),
   enabled: z.boolean(),
+  /** Parâmetro obrigatório segundo a documentação (apenas para a interface). */
+  required: z.boolean().optional(),
+  /** Tipo e descrição vindos da documentação (apenas para a interface). */
+  hint: z.string().max(300).optional(),
 });
 export type KeyValue = z.infer<typeof KeyValueSchema>;
 

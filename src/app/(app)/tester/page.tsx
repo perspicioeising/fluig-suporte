@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { getTesterData } from "@/modules/tester/queries";
-import { HTTP_METHODS, type HttpMethod } from "@/modules/tester/schemas";
+import { parseTesterPrefill } from "@/modules/builder/tester-link";
 import { TesterWorkspace } from "@/modules/tester/components/tester-workspace";
 
 export const metadata: Metadata = { title: "API Tester" };
@@ -33,10 +33,6 @@ export default function TesterPage({ searchParams }: PageProps<"/tester">) {
   );
 }
 
-function first(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] : value;
-}
-
 async function TesterContent({
   searchParams,
 }: {
@@ -44,22 +40,17 @@ async function TesterContent({
 }) {
   const [data, raw] = await Promise.all([getTesterData(), searchParams]);
 
-  // Pré-preenchimento vindo do catálogo (?method=GET&path=/...)
-  const rawMethod = first(raw.method)?.toUpperCase();
-  const initialMethod = (HTTP_METHODS as readonly string[]).includes(rawMethod ?? "")
-    ? (rawMethod as HttpMethod)
-    : undefined;
-  const rawPath = first(raw.path);
-  const initialPath = rawPath && /^\/(?!\/)[^\\\u0000-\u001f]{0,1999}$/.test(rawPath) ? rawPath : undefined;
+  // Pré-preenchimento vindo do Construtor/Catálogo (validado: a URL é entrada não confiável).
+  const prefill = parseTesterPrefill(raw);
 
   return (
     <TesterWorkspace
-      key={`${initialMethod ?? ""}|${initialPath ?? ""}`}
+      // Novo pré-preenchimento = nova instância (estado inicial recalculado).
+      key={prefill ? JSON.stringify(prefill) : "manual"}
       environments={data.environments}
       collections={data.collections}
       history={data.history}
-      initialMethod={initialMethod}
-      initialPath={initialPath}
+      prefill={prefill}
     />
   );
 }

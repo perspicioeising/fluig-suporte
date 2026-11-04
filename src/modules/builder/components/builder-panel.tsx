@@ -2,16 +2,14 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ExternalLink, FlaskConical, MessageSquare, Send } from "lucide-react";
+import { ExternalLink, FlaskConical, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { resolveEndpoint } from "@/modules/soap/endpoint";
 import { KindBadge, MethodBadge } from "@/modules/catalog/components/kind-badge";
-import { fillPathParams } from "../generators/common";
-import { suggestBody } from "../generators/json";
-import { generateRestSnippets } from "../generators/rest";
 import { generateSdkSnippets } from "../generators/sdk";
 import { generateSoapSnippets, soapOperationFromCatalog } from "../generators/soap";
-import type { BuilderEntry, BuilderEnvironment, Snippet } from "../types";
+import type { BuilderEntry, BuilderEnvironment } from "../types";
+import { RestBuilder } from "./rest-builder";
 import { SnippetView } from "./snippet-view";
 
 const fieldClass =
@@ -89,7 +87,7 @@ export function BuilderPanel({
       )}
 
       {entry.kind === "rest_new" || entry.kind === "rest_old" ? (
-        <RestBuilder data={data} baseUrl={env?.base_url ?? PLACEHOLDER_BASE} />
+        <RestBuilder data={data} baseUrl={env?.base_url ?? PLACEHOLDER_BASE} environmentId={envId} />
       ) : entry.kind === "soap" ? (
         <SoapBuilder data={data} baseUrl={env?.base_url} />
       ) : (
@@ -100,157 +98,6 @@ export function BuilderPanel({
 }
 
 /* ---------------------------------- REST ---------------------------------- */
-
-function RestBuilder({ data, baseUrl }: { data: BuilderEntry; baseUrl: string }) {
-  const { entry, parameters } = data;
-  const method = (entry.http_method ?? "GET").toUpperCase();
-  const rawPath = entry.path ?? "/";
-  // A documentação do REST antigo lista o caminho sem o prefixo da API pública.
-  const fullPath = entry.kind === "rest_old" ? `/api/public${rawPath}` : rawPath;
-
-  const pathNames = useMemo(() => [...fullPath.matchAll(/\{([^}]+)\}/g)].map((m) => m[1]), [fullPath]);
-  const queryParams = useMemo(
-    () => parameters.filter((p) => p.direction === "input" && p.location === "query"),
-    [parameters],
-  );
-  const suggestion = useMemo(() => suggestBody(entry, parameters), [entry, parameters]);
-
-  const [pathValues, setPathValues] = useState<Record<string, string>>({});
-  const [queryValues, setQueryValues] = useState<Record<string, string>>({});
-  const [body, setBody] = useState(suggestion.body);
-
-  const { path: filledPath, missing } = fillPathParams(fullPath, pathValues);
-  const query = queryParams
-    .map((p) => ({
-      key: p.name,
-      value: queryValues[p.name]?.trim() ? queryValues[p.name].trim() : p.is_required ? `PREENCHER_${p.name}` : "",
-      include: p.is_required || Boolean(queryValues[p.name]?.trim()),
-    }))
-    .filter((q) => q.include)
-    .map(({ key, value }) => ({ key, value }));
-
-  const canHaveBody = !["GET", "HEAD", "OPTIONS"].includes(method);
-
-  const snippets: Snippet[] = (() => {
-    const list = generateRestSnippets({ method, baseUrl, path: filledPath, query, body: canHaveBody ? body : undefined });
-    if (body.trim()) {
-      let pretty = body;
-      try {
-        pretty = JSON.stringify(JSON.parse(body), null, 2);
-      } catch {
-        // mantém como está (ex.: exemplo com comentários)
-      }
-      list.push({
-        id: "json",
-        label: "JSON",
-        language: "json",
-        code: pretty,
-        notes:
-          suggestion.source === "swagger"
-            ? ["Esqueleto montado a partir dos campos do Swagger. Tipos que referenciam outros objetos aparecem como {}."]
-            : suggestion.source === "documentacao"
-              ? ["Baseado no exemplo da documentação oficial."]
-              : undefined,
-      });
-    }
-    return list;
-  })();
-
-  const testerHref = `/tester?${new URLSearchParams({ method, path: filledPath }).toString()}`;
-
-  return (
-    <div className="space-y-4">
-      {(pathNames.length > 0 || queryParams.length > 0 || canHaveBody) && (
-        <section aria-label="Valores" className="space-y-3 rounded-lg border border-border bg-surface p-4">
-          <h3 className="text-sm font-medium">Valores do exemplo</h3>
-
-          {pathNames.length > 0 && (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {pathNames.map((name) => (
-                <div key={name} className="space-y-1">
-                  <label htmlFor={`p-${name}`} className="text-xs font-medium">
-                    {name} <span className="text-muted">(caminho, obrigatório)</span>
-                  </label>
-                  <input
-                    id={`p-${name}`}
-                    value={pathValues[name] ?? ""}
-                    onChange={(e) => setPathValues((v) => ({ ...v, [name]: e.target.value }))}
-                    className={cn(fieldClass, "w-full font-mono")}
-                    autoComplete="off"
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-
-          {queryParams.length > 0 && (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {queryParams.map((p) => (
-                <div key={p.id} className="space-y-1">
-                  <label htmlFor={`q-${p.name}`} className="text-xs font-medium">
-                    {p.name}{" "}
-                    <span className="text-muted">
-                      ({p.data_type ?? "query"}
-                      {p.is_required ? ", obrigatório" : ", opcional"})
-                    </span>
-                  </label>
-                  <input
-                    id={`q-${p.name}`}
-                    value={queryValues[p.name] ?? ""}
-                    onChange={(e) => setQueryValues((v) => ({ ...v, [p.name]: e.target.value }))}
-                    placeholder={p.description ?? undefined}
-                    className={cn(fieldClass, "w-full font-mono")}
-                    autoComplete="off"
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-
-          {canHaveBody && (
-            <div className="space-y-1">
-              <label htmlFor="rest-body" className="text-xs font-medium">
-                Corpo da requisição (JSON)
-              </label>
-              <textarea
-                id="rest-body"
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                rows={8}
-                spellCheck={false}
-                className={cn(fieldClass, "w-full font-mono text-xs")}
-              />
-              {suggestion.source === "documentacao" && (
-                <p className="text-xs text-muted">Preenchido com o exemplo da documentação oficial.</p>
-              )}
-              {suggestion.source === "nenhum" && (
-                <p className="text-xs text-muted">A documentação não traz um exemplo de corpo para esta entrada.</p>
-              )}
-            </div>
-          )}
-        </section>
-      )}
-
-      {missing.length > 0 && (
-        <p className="text-xs text-muted">
-          Preencha {missing.join(", ")} para substituir os marcadores PREENCHER_* no código.
-        </p>
-      )}
-
-      <SnippetView snippets={snippets} />
-
-      <p className="text-sm">
-        <Link
-          href={missing.length === 0 ? testerHref : `/tester?${new URLSearchParams({ method, path: fullPath }).toString()}`}
-          className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 hover:bg-surface-2"
-        >
-          <Send className="size-4 text-accent" aria-hidden />
-          Executar no API Tester
-        </Link>
-      </p>
-    </div>
-  );
-}
 
 /* ---------------------------------- SOAP ---------------------------------- */
 

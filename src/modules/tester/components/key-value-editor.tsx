@@ -27,6 +27,12 @@ export function KeyValueEditor({
       {rows.length === 0 && (
         <p className="text-xs text-muted">Nenhum item. Use o botão abaixo para adicionar.</p>
       )}
+      {rows.some((r) => r.required || r.hint) && (
+        <p className="text-xs text-muted">
+          Itens com <span className="font-semibold text-danger">*</span> são obrigatórios na documentação.
+          Os desmarcados são opcionais: marque para enviar.
+        </p>
+      )}
       {rows.map((row, index) => (
         <div key={index} className="flex items-center gap-2">
           <input
@@ -36,11 +42,23 @@ export function KeyValueEditor({
             aria-label={`Ativar ${label.toLowerCase()} ${index + 1}`}
             className="size-4 accent-[var(--accent)]"
           />
+          {row.required ? (
+            <span
+              className="w-3 shrink-0 text-center font-semibold text-danger"
+              title="Obrigatório segundo a documentação"
+              aria-label="obrigatório"
+            >
+              *
+            </span>
+          ) : (
+            <span className="w-3 shrink-0" aria-hidden />
+          )}
           <input
             value={row.key}
             onChange={(e) => update(index, { key: e.target.value })}
             placeholder={keyPlaceholder}
-            aria-label={`${label}: nome ${index + 1}`}
+            aria-label={`${label}: nome ${index + 1}${row.required ? " (obrigatório)" : ""}`}
+            title={row.hint}
             className={inputClass}
             autoComplete="off"
             spellCheck={false}
@@ -48,8 +66,9 @@ export function KeyValueEditor({
           <input
             value={row.value}
             onChange={(e) => update(index, { value: e.target.value })}
-            placeholder={valuePlaceholder}
+            placeholder={row.hint ?? valuePlaceholder}
             aria-label={`${label}: valor ${index + 1}`}
+            title={row.hint}
             className={inputClass}
             autoComplete="off"
             spellCheck={false}

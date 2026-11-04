@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { classifyTopics } from "../../../src/modules/catalog/topics";
 import { entryToChunk, sha256 } from "./chunk";
 import type { NormalizedEntry, ParsedDocument, SourceDefinition } from "./types";
 
@@ -101,6 +102,37 @@ export async function persistDocuments(
   return { documents: documents.length, chunks: chunkCount };
 }
 
+/** A coluna `topics` vem da migration 0007; sem ela a importação segue normalmente. */
+export async function hasTopicsColumn(db: SupabaseClient): Promise<boolean> {
+  const { error } = await db.from("catalog_entries").select("topics").limit(1);
+  return !error;
+}
+
+/** Recalcula `topics` de todas as entradas já gravadas (backfill / após mudar as regras). */
+export async function backfillTopics(db: SupabaseClient): Promise<number> {
+  if (!(await hasTopicsColumn(db))) {
+    throw new Error("A coluna catalog_entries.topics não existe: aplique a migration 20261104000007 primeiro.");
+  }
+  let updated = 0;
+  for (let from = 0; ; from += 500) {
+    const { data, error } = await db
+      .from("catalog_entries")
+      .select("id, name, kind, path, tags")
+      .order("id")
+      .range(from, from + 499);
+    if (error) fail("Falha ao ler catalog_entries", error);
+    if (!data?.length) break;
+    for (const row of data) {
+      const topics = classifyTopics(row as { name: string; kind: string; path: string | null; tags: string[] });
+      const { error: upError } = await db.from("catalog_entries").update({ topics }).eq("id", row.id);
+      if (upError) fail("Falha ao gravar topics", upError);
+      updated++;
+    }
+    if (data.length < 500) break;
+  }
+  return updated;
+}
+
 /**
  * Grava (upsert) as entradas de uma fonte e reconstrói parâmetros e chunks.
  * `preserveDocumentUrls`: documentos da mesma fonte que NÃO devem ser removidos
@@ -122,6 +154,7 @@ export async function persistSource(
   const sourceId = source.id as string;
 
   /* 1. Entradas ----------------------------------------------------------- */
+  const withTopics = await hasTopicsColumn(db);
   const idBySlug = new Map<string, string>();
   for (const batch of batches(entries, 200)) {
     const rows = batch.map((e) => ({
@@ -138,6 +171,7 @@ export async function persistSource(
       tags: e.tags,
       examples: e.examples,
       source_url: e.source_url,
+      ...(withTopics ? { topics: classifyTopics(e) } : {}),
     }));
     const { data, error } = await db
       .from("catalog_entries")

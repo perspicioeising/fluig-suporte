@@ -1,5 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { expandQuestionTerms } from "./glossary";
 import type { Source } from "./types";
 
 export type RetrievedSource = Source & { content: string };
@@ -62,27 +63,60 @@ export async function retrieveSources(
 
   // 2. Identificadores -> entradas do catálogo -> seus trechos
   const identifiers = [...new Set(query.match(IDENTIFIER) ?? [])].slice(0, 5);
-  if (identifiers.length > 0) {
+  const englishTerms = expandQuestionTerms(query);
+  {
     const filters = identifiers
       .map((id) => id.replace(/[^A-Za-z0-9.]/g, ""))
       .filter(Boolean)
       .map((id) => `name.ilike.%${id}%`)
       .join(",");
 
+    const ids: string[] = [];
     if (filters) {
       const { data: entries } = await supabase
         .from("catalog_entries")
         .select("id")
         .or(filters)
         .limit(MAX_BOOSTED + 4);
+      ids.push(...(entries ?? []).map((e) => e.id as string));
+    }
 
-      const ids = (entries ?? []).map((e) => e.id as string);
+    // Pergunta em português -> termos em inglês do catálogo (todos devem aparecer no nome/caminho/resumo)
+    if (englishTerms.length > 0) {
+      // Qualificadores como "active" raramente aparecem no nome: se nada casa com todos os
+      // termos, relaxa descartando os últimos até achar entradas.
+      for (let n = englishTerms.length; n >= 1; n--) {
+        let q = supabase
+          .from("catalog_entries")
+          .select("id, name, path, kind")
+          .in("kind", ["rest_new", "rest_old"])
+          .limit(80);
+        for (const term of englishTerms.slice(0, n)) {
+          q = q.or(`name.ilike.%${term}%,path.ilike.%${term}%,summary.ilike.%${term}%`);
+        }
+        const { data: entries } = await q;
+        if (entries?.length) {
+          // Ordena pelos candidatos que mais termos têm no nome/caminho; rest_new vence empates.
+          const score = (e: { name: string; path: string | null }) => {
+            const text = `${e.name} ${e.path ?? ""}`.toLowerCase();
+            return englishTerms.filter((t) => text.includes(t)).length;
+          };
+          const top = [...entries]
+            .sort((a, b) => score(b) - score(a) || String(a.kind).localeCompare(String(b.kind)))
+            .slice(0, MAX_BOOSTED);
+          ids.push(...top.map((e) => e.id as string));
+          break;
+        }
+      }
+    }
+
+    {
       if (ids.length > 0) {
         const { data } = await supabase
           .from("kb_chunks")
           .select("id, content, metadata, catalog_entry_id, kb_documents(url, title)")
-          .in("catalog_entry_id", ids)
-          .limit(MAX_BOOSTED);
+          .in("catalog_entry_id", [...new Set(ids)])
+          .limit(MAX_BOOSTED + 2);
 
         for (const r of (data ?? []) as unknown as (Omit<Row, "url" | "title"> & {
           kb_documents: { url: string; title: string | null } | null;
@@ -97,7 +131,7 @@ export async function retrieveSources(
 
   // 1. Texto completo
   const { data: found, error } = await supabase.rpc("search_kb_chunks", {
-    query_text: query,
+    query_text: englishTerms.length ? `${query} ${englishTerms.join(" ")}` : query,
     match_count: MAX_SOURCES,
   });
   if (error) {

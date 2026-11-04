@@ -8,6 +8,8 @@ export type RestInput = {
   /** Caminho completo, já com /api/public (REST antigo) e parâmetros de caminho preenchidos. */
   path: string;
   query: { key: string; value: string }[];
+  /** Headers documentados (as credenciais do ambiente NÃO entram aqui). */
+  headers?: { key: string; value: string }[];
   /** Corpo (texto). Enviado apenas em métodos com corpo. */
   body?: string;
 };
@@ -37,21 +39,24 @@ function curl(input: RestInput): Snippet {
   for (const q of input.query) if (q.key) url.searchParams.append(q.key, q.value);
   const body = bodyOf(input);
 
-  const lines = [
-    `curl -X ${input.method.toUpperCase()} ${shellQuote(url.toString())} \\`,
-    `  -H 'Accept: application/json' \\`,
-    ...(body ? [`  -H 'Content-Type: application/json' \\`] : []),
-    `  -H ${shellQuote(
+  const parts = [
+    `curl -X ${input.method.toUpperCase()} ${shellQuote(url.toString())}`,
+    "-H 'Accept: application/json'",
+    ...(body ? ["-H 'Content-Type: application/json'"] : []),
+    ...(input.headers ?? [])
+      .filter((h) => h.key)
+      .map((h) => `-H ${shellQuote(`${h.key}: ${h.value}`)}`),
+    `-H ${shellQuote(
       'Authorization: OAuth oauth_consumer_key="CONSUMER_KEY", oauth_token="ACCESS_TOKEN", oauth_signature_method="HMAC-SHA1", oauth_timestamp="TIMESTAMP", oauth_nonce="NONCE", oauth_version="1.0", oauth_signature="ASSINATURA"',
-    )}${body ? " \\" : ""}`,
-    ...(body ? [`  --data-binary ${shellQuote(body)}`] : []),
+    )}`,
+    ...(body ? [`--data-binary ${shellQuote(body)}`] : []),
   ];
 
   return {
     id: "curl",
     label: "cURL",
     language: "bash",
-    code: lines.join("\n"),
+    code: parts.join(" \\\n  "),
     notes: [
       OAUTH_NOTE,
       "O cURL não assina OAuth 1.0a sozinho: a oauth_signature depende de timestamp e nonce de cada chamada. Gere o cabeçalho com os exemplos em JavaScript ou Java, ou use o API Tester do Studio.",
@@ -122,6 +127,9 @@ function javascript(input: RestInput): Snippet {
     "  headers: {",
     "    Accept: \"application/json\",",
     ...(body ? ["    \"Content-Type\": \"application/json\","] : []),
+    ...(input.headers ?? [])
+      .filter((h) => h.key)
+      .map((h) => `    ${jsString(h.key)}: ${jsString(h.value)},`),
     `    Authorization: oauthHeader(${jsString(method)}, url),`,
     "  },",
     ...(body ? [json ? "  body: JSON.stringify(payload)," : "  body: payload,"] : []),
@@ -213,6 +221,9 @@ function java(input: RestInput): Snippet {
     "                .uri(URI.create(fullUrl))",
     "                .header(\"Accept\", \"application/json\")",
     ...(body ? ["                .header(\"Content-Type\", \"application/json\")"] : []),
+    ...(input.headers ?? [])
+      .filter((h) => h.key)
+      .map((h) => `                .header(${javaString(h.key)}, ${javaString(h.value)})`),
     `                .header("Authorization", oauthHeader(${javaString(method)}, urlWithoutQuery, query))`,
     `                .method(${javaString(method)}, ${body ? "HttpRequest.BodyPublishers.ofString(payload)" : "HttpRequest.BodyPublishers.noBody()"})`,
     "                .build();",

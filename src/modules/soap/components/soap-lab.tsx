@@ -25,9 +25,14 @@ export function SoapLab({
   const [search, setSearch] = useState("");
 
   const filtered = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    return term
-      ? operations.filter((o) => `${o.name} ${o.service}`.toLowerCase().includes(term))
+    // sem diferenciar maiúsculas/minúsculas nem acentos; todos os termos precisam aparecer
+    const fold = (t: string) => t.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+    const terms = fold(search).split(/\s+/).filter(Boolean);
+    return terms.length
+      ? operations.filter((o) => {
+          const text = fold(`${o.name} ${o.service}`);
+          return terms.every((t) => text.includes(t));
+        })
       : operations;
   }, [operations, search]);
 

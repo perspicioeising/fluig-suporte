@@ -8,7 +8,10 @@ import {
   KindBadge,
   MethodBadge,
 } from "@/modules/catalog/components/kind-badge";
-import type { CatalogParameter } from "@/modules/catalog/types";
+import type { CatalogEntry, CatalogParameter } from "@/modules/catalog/types";
+import { suggestBody } from "@/modules/builder/generators/json";
+import { buildTesterHref, documentedRows } from "@/modules/builder/tester-link";
+import type { HttpMethod } from "@/modules/tester/schemas";
 
 export const metadata: Metadata = { title: "Detalhe da API" };
 
@@ -33,6 +36,24 @@ export default function EntryPage({ params }: PageProps<"/catalogo/[id]">) {
       </Suspense>
     </section>
   );
+}
+
+/** Link para o API Tester já com os parâmetros obrigatórios e o corpo sugerido pela documentação. */
+function buildDetailTesterHref(entry: CatalogEntry, parameters: CatalogParameter[]) {
+  const method = (entry.http_method ?? "GET").toUpperCase() as HttpMethod;
+  const rows = documentedRows(parameters);
+  const canHaveBody = !["GET", "HEAD", "OPTIONS"].includes(method);
+  const suggestion = canHaveBody ? suggestBody(entry, parameters) : null;
+
+  return buildTesterHref({
+    method,
+    // A documentação do REST antigo lista o caminho sem o prefixo da API pública.
+    path: entry.kind === "rest_old" ? `/api/public${entry.path}` : (entry.path ?? "/"),
+    query: rows.query,
+    headers: rows.headers,
+    bodyType: suggestion?.body ? "json" : "none",
+    body: suggestion?.body ?? "",
+  }).href;
 }
 
 async function EntryDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -130,11 +151,7 @@ async function EntryDetail({ params }: { params: Promise<{ id: string }> }) {
         entry.http_method && (
           <div className="space-y-1 text-sm">
             <Link
-              href={`/tester?${new URLSearchParams({
-                method: entry.http_method,
-                // A documentação do REST antigo lista o caminho sem o prefixo da API pública.
-                path: entry.kind === "rest_old" ? `/api/public${entry.path}` : entry.path,
-              }).toString()}`}
+              href={buildDetailTesterHref(entry, parameters)}
               className="inline-flex items-center gap-1 rounded-md border border-border px-3 py-1.5 hover:bg-surface-2"
             >
               <Send className="size-4 text-accent" aria-hidden />

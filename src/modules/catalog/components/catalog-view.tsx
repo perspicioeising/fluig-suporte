@@ -1,3 +1,4 @@
+import { getFacets } from "../queries";
 import { CatalogSearchSchema } from "../types";
 import { CatalogFilters } from "./catalog-filters";
 import { CatalogResults } from "./catalog-results";
@@ -18,12 +19,17 @@ export async function CatalogView({
   const search = CatalogSearchSchema.parse({
     q: first(raw.q),
     kind: first(raw.kind),
+    method: first(raw.method),
+    topic: first(raw.topic),
+    group: first(raw.group),
     page: first(raw.page),
   });
 
+  const facets = await getFacets(search.kind);
+
   return (
     <>
-      <CatalogFilters search={search} />
+      <CatalogFilters search={search} groups={facets.groups} topicsAvailable={facets.topicsAvailable} />
       <CatalogResults search={search} />
     </>
   );

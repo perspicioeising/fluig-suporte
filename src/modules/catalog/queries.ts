@@ -17,7 +17,15 @@ function sanitizeTerm(term: string) {
   return term.replace(/[%_*\\,():"]/g, " ").replace(/\s+/g, " ").trim();
 }
 
-export async function searchEntries({ q, kind, page }: CatalogSearch) {
+/** Quebra a busca em termos (até 6): todos precisam aparecer, em qualquer ordem. */
+export function searchTerms(q: string | undefined): string[] {
+  return sanitizeTerm(q ?? "")
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 6);
+}
+
+export async function searchEntries({ q, kind, method, topic, group, page }: CatalogSearch) {
   const supabase = await createClient();
 
   let query = supabase
@@ -27,13 +35,14 @@ export async function searchEntries({ q, kind, page }: CatalogSearch) {
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
 
   if (kind) query = query.eq("kind", kind);
+  if (method) query = query.eq("http_method", method);
+  if (topic) query = query.contains("topics", [topic]);
+  if (group) query = query.contains("tags", [group]);
 
-  const term = q ? sanitizeTerm(q) : "";
-  if (term) {
+  // ilike ignora maiúsculas/minúsculas; cada termo pode estar no nome, caminho ou resumo.
+  for (const term of searchTerms(q)) {
     const pattern = `%${term}%`;
-    query = query.or(
-      `name.ilike.${pattern},path.ilike.${pattern},summary.ilike.${pattern}`,
-    );
+    query = query.or(`name.ilike.${pattern},path.ilike.${pattern},summary.ilike.${pattern}`);
   }
 
   const { data, count, error } = await query;
@@ -43,6 +52,25 @@ export async function searchEntries({ q, kind, page }: CatalogSearch) {
     entries: (data ?? []) as unknown as CatalogEntry[],
     total: count ?? 0,
   };
+}
+
+/**
+ * Opções dos filtros. Grupos = primeiro grupo oficial (tag) das entradas do tipo escolhido
+ * (API/serviço/classe). Assuntos dependem da migration 0007: sem a coluna, o filtro some.
+ */
+export async function getFacets(kind: CatalogSearch["kind"]) {
+  const supabase = await createClient();
+
+  let groups: string[] = [];
+  if (kind) {
+    const { data } = await supabase.from("catalog_entries").select("tags").eq("kind", kind).limit(1000);
+    groups = [...new Set((data ?? []).map((r) => (r.tags as string[])[0]).filter(Boolean))].sort((a, b) =>
+      a.localeCompare(b, "pt-BR", { sensitivity: "base" }),
+    );
+  }
+
+  const topicProbe = await supabase.from("catalog_entries").select("topics").limit(1);
+  return { groups, topicsAvailable: !topicProbe.error };
 }
 
 export async function getEntry(id: string) {

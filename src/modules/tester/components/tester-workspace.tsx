@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, Save, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { EnvironmentSummary } from "@/modules/environments/constants";
+import type { TesterPrefill } from "@/modules/builder/tester-link";
 import { saveRequest } from "../actions";
 import {
   BODY_TYPES,
@@ -46,26 +47,28 @@ export function TesterWorkspace({
   environments,
   collections,
   history,
-  initialMethod,
-  initialPath,
+  prefill,
 }: {
   environments: EnvironmentSummary[];
   collections: CollectionWithRequests[];
   history: HistoryItem[];
-  initialMethod?: HttpMethod;
-  initialPath?: string;
+  /** Vindo do Construtor/Catálogo: ambiente, método, caminho, parâmetros e corpo já preenchidos. */
+  prefill?: TesterPrefill | null;
 }) {
   const router = useRouter();
   const activeEnvs = environments.filter((e) => e.is_active);
 
-  const [envId, setEnvId] = useState(activeEnvs[0]?.id ?? "");
-  const [method, setMethod] = useState<HttpMethod>(initialMethod ?? "GET");
-  const [path, setPath] = useState(initialPath ?? "/");
-  const [query, setQuery] = useState<KeyValue[]>([]);
-  const [headers, setHeaders] = useState<KeyValue[]>([]);
-  const [bodyType, setBodyType] = useState<BodyType>("none");
-  const [body, setBody] = useState("");
-  const [reqTab, setReqTab] = useState<"params" | "headers" | "body">("params");
+  const prefillEnvOk = prefill?.environmentId && activeEnvs.some((e) => e.id === prefill.environmentId);
+  const [envId, setEnvId] = useState(prefillEnvOk ? (prefill!.environmentId as string) : (activeEnvs[0]?.id ?? ""));
+  const [method, setMethod] = useState<HttpMethod>(prefill?.method ?? "GET");
+  const [path, setPath] = useState(prefill?.path ?? "/");
+  const [query, setQuery] = useState<KeyValue[]>(prefill?.query ?? []);
+  const [headers, setHeaders] = useState<KeyValue[]>(prefill?.headers ?? []);
+  const [bodyType, setBodyType] = useState<BodyType>(prefill?.bodyType ?? "none");
+  const [body, setBody] = useState(prefill?.body ?? "");
+  const [reqTab, setReqTab] = useState<"params" | "headers" | "body">(
+    prefill && prefill.query.length === 0 && prefill.body ? "body" : "params",
+  );
 
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<ExecuteResponse | null>(null);
@@ -80,6 +83,13 @@ export function TesterWorkspace({
   const env = environments.find((e) => e.id === envId);
   const writeBlocked =
     !!env && !env.allow_write_methods && !READ_ONLY_METHODS.includes(method);
+
+  // {param} no caminho: a URL não é válida enquanto não for substituído.
+  const unresolved = [...path.matchAll(/\{([^}]+)\}/g)].map((m) => m[1]);
+  // Obrigatórios da documentação ainda sem valor (aviso; não bloqueia o envio).
+  const requiredEmpty = [...query, ...headers]
+    .filter((r) => r.enabled && r.required && r.key && !r.value.trim())
+    .map((r) => r.key);
 
   async function send() {
     setLoading(true);
@@ -270,7 +280,7 @@ export function TesterWorkspace({
             <div className="flex gap-2">
               <button
                 type="submit"
-                disabled={loading || !envId || writeBlocked}
+                disabled={loading || !envId || writeBlocked || unresolved.length > 0}
                 className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:opacity-90 disabled:opacity-60"
               >
                 {loading ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Send className="size-4" aria-hidden />}
@@ -292,6 +302,17 @@ export function TesterWorkspace({
             <p role="alert" className="text-xs text-danger">
               O ambiente &quot;{env?.name}&quot; está em modo somente leitura. Habilite métodos de escrita em
               Configurações para usar {method}.
+            </p>
+          )}
+
+          {unresolved.length > 0 && (
+            <p role="alert" className="text-xs text-danger">
+              Substitua {unresolved.map((n) => `{${n}}`).join(", ")} no caminho antes de enviar.
+            </p>
+          )}
+          {requiredEmpty.length > 0 && (
+            <p role="status" className="text-xs text-accent">
+              Parâmetros obrigatórios sem valor segundo a documentação: {requiredEmpty.join(", ")}.
             </p>
           )}
 

@@ -7,6 +7,9 @@ function pageHref(search: CatalogSearch, page: number) {
   const params = new URLSearchParams();
   if (search.q) params.set("q", search.q);
   if (search.kind) params.set("kind", search.kind);
+  if (search.method) params.set("method", search.method);
+  if (search.topic) params.set("topic", search.topic);
+  if (search.group) params.set("group", search.group);
   if (page > 1) params.set("page", String(page));
   const qs = params.toString();
   return qs ? `/catalogo?${qs}` : "/catalogo";
@@ -17,7 +20,7 @@ export async function CatalogResults({ search }: { search: CatalogSearch }) {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   if (entries.length === 0) {
-    const filtered = Boolean(search.q || search.kind);
+    const filtered = Boolean(search.q || search.kind || search.method || search.topic || search.group);
     return (
       <p className="rounded-lg border border-dashed border-border bg-surface p-6 text-sm text-muted">
         {filtered

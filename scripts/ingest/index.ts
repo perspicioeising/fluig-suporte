@@ -2,13 +2,13 @@
  * Importação da documentação oficial do Fluig para o catálogo.
  *
  * Uso:
- *   npm run ingest -- --source=rest-new|rest-old|sdk|tdn|help|all [--dry-run] [--limit=N] [--dir=documentos]
+ *   npm run ingest -- --source=rest-new|rest-old|sdk|tdn|help|topics|all [--dry-run] [--limit=N] [--dir=documentos]
  *
  * --dry-run  baixa e interpreta, mas NÃO grava no banco.
  * --limit=N  (rest-old, sdk) processa só os N primeiros itens.
  * --dir=PATH (tdn) pasta com as páginas do TDN salvas manualmente.
  */
-import { ensureSource, getAdminClient, persistDocuments, persistSource } from "./lib/db";
+import { backfillTopics, ensureSource, getAdminClient, persistDocuments, persistSource } from "./lib/db";
 import type { ParseResult } from "./lib/types";
 import { HELP_SOURCE, ingestHelp } from "./help";
 import { ingestRestNew, REST_NEW_SOURCE_SLUG } from "./rest-new";
@@ -49,6 +49,11 @@ async function main() {
     { key: "tdn", label: `SOAP e documentação conceitual (TDN salvo em ${dir})`, sourceSlug: SOAP_SOURCE_SLUG, run: async () => ingestTdnLocal(dir) },
   ];
 
+  if (source === "topics") {
+    const n = await backfillTopics(getAdminClient());
+    console.log(`Assuntos recalculados em ${n} entradas.`);
+    return;
+  }
   const selected = jobs.filter((j) => source === "all" || j.key === source);
   if (selected.length === 0) {
     throw new Error(`Fonte desconhecida: "${source}". Use rest-new, rest-old, sdk, tdn, help ou all.`);

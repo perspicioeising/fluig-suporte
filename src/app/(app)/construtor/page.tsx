@@ -2,11 +2,12 @@ import { Suspense } from "react";
 import Link from "next/link";
 import * as z from "zod";
 import type { Metadata } from "next";
-import { searchEntries } from "@/modules/catalog/queries";
-import { CatalogSearchSchema, ENTRY_KINDS, KIND_LABELS } from "@/modules/catalog/types";
+import { getFacets, searchEntries } from "@/modules/catalog/queries";
+import { CatalogSearchSchema } from "@/modules/catalog/types";
 import { KindBadge, MethodBadge } from "@/modules/catalog/components/kind-badge";
 import { listEnvironments } from "@/modules/environments/queries";
 import { getBuilderEntry } from "@/modules/builder/queries";
+import { BuilderSearch } from "@/modules/builder/components/builder-search";
 import { BuilderPanel } from "@/modules/builder/components/builder-panel";
 import { cn } from "@/lib/utils";
 
@@ -41,54 +42,32 @@ export default function BuilderPage({ searchParams }: PageProps<"/construtor">) 
 
 async function BuilderContent({ searchParams }: { searchParams: Promise<RawSearchParams> }) {
   const raw = await searchParams;
-  const search = CatalogSearchSchema.parse({ q: first(raw.q), kind: first(raw.kind), page: 1 });
+  const search = CatalogSearchSchema.parse({ q: first(raw.q), kind: first(raw.kind), method: first(raw.method), topic: first(raw.topic), page: 1 });
   const entryParam = first(raw.entry);
   const entryId = z.uuid().safeParse(entryParam).success ? (entryParam as string) : null;
 
-  const [environments, results, builderEntry] = await Promise.all([
+  const hasFilter = Boolean(search.q || search.kind || search.method || search.topic);
+  const [environments, results, builderEntry, facets] = await Promise.all([
     listEnvironments(),
-    search.q || search.kind ? searchEntries(search) : Promise.resolve(null),
+    hasFilter ? searchEntries(search) : Promise.resolve(null),
     entryId ? getBuilderEntry(entryId) : Promise.resolve(null),
+    getFacets(undefined),
   ]);
 
   const baseParams = new URLSearchParams();
   if (search.q) baseParams.set("q", search.q);
   if (search.kind) baseParams.set("kind", search.kind);
+  if (search.method) baseParams.set("method", search.method);
+  if (search.topic) baseParams.set("topic", search.topic);
 
   return (
     <div className="grid gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]">
       <aside aria-label="Escolher API" className="space-y-3 rounded-lg border border-border bg-surface p-3 lg:max-h-[calc(100vh-12rem)] lg:overflow-auto">
-        <form action="/construtor" method="get" role="search" className="space-y-2">
-          {entryId && <input type="hidden" name="entry" value={entryId} />}
-          <label htmlFor="b-q" className="sr-only">Buscar</label>
-          <input
-            id="b-q"
-            name="q"
-            type="search"
-            defaultValue={search.q ?? ""}
-            maxLength={100}
-            placeholder="Nome, caminho ou descrição"
-            className="w-full rounded-md border border-border bg-surface-2 px-3 py-2 text-sm placeholder:text-muted"
-          />
-          <label htmlFor="b-kind" className="sr-only">Tipo</label>
-          <select
-            id="b-kind"
-            name="kind"
-            defaultValue={search.kind ?? ""}
-            className="w-full rounded-md border border-border bg-surface-2 px-3 py-2 text-sm"
-          >
-            <option value="">Todos os tipos</option>
-            {ENTRY_KINDS.map((k) => (
-              <option key={k} value={k}>{KIND_LABELS[k]}</option>
-            ))}
-          </select>
-          <button
-            type="submit"
-            className="w-full rounded-md bg-accent px-3 py-2 text-sm font-medium text-accent-foreground hover:opacity-90"
-          >
-            Buscar
-          </button>
-        </form>
+        <BuilderSearch
+          initial={{ q: search.q ?? "", kind: search.kind ?? "", method: search.method ?? "", topic: search.topic ?? "" }}
+          entryId={entryId}
+          topicsAvailable={facets.topicsAvailable}
+        />
 
         {results === null ? (
           <p className="text-xs text-muted">Busque por um método (ex.: getAvailableDatasets), serviço (ECMDatasetService) ou caminho.</p>

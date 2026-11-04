@@ -23,13 +23,15 @@ export function shellQuote(value: string): string {
 export function fillPathParams(
   path: string,
   values: Record<string, string>,
+  /** "code": usa PREENCHER_nome (código gerado). "braces": mantém {nome} (link para o API Tester). */
+  missingStyle: "code" | "braces" = "code",
 ): { path: string; missing: string[] } {
   const missing: string[] = [];
   const filled = path.replace(/\{([^}]+)\}/g, (_m, name: string) => {
     const value = values[name]?.trim();
     if (!value) {
       missing.push(name);
-      return `PREENCHER_${name}`;
+      return missingStyle === "braces" ? `{${name}}` : `PREENCHER_${name}`;
     }
     return encodeURIComponent(value);
   });
