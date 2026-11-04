@@ -118,15 +118,25 @@ async function EntryDetail({ params }: { params: Promise<{ id: string }> }) {
       {(entry.kind === "rest_new" || entry.kind === "rest_old") &&
         entry.path &&
         entry.http_method && (
-          <p className="text-sm">
+          <div className="space-y-1 text-sm">
             <Link
-              href={`/tester?${new URLSearchParams({ method: entry.http_method, path: entry.path }).toString()}`}
+              href={`/tester?${new URLSearchParams({
+                method: entry.http_method,
+                // A documentação do REST antigo lista o caminho sem o prefixo da API pública.
+                path: entry.kind === "rest_old" ? `/api/public${entry.path}` : entry.path,
+              }).toString()}`}
               className="inline-flex items-center gap-1 rounded-md border border-border px-3 py-1.5 hover:bg-surface-2"
             >
               <Send className="size-4 text-accent" aria-hidden />
               Abrir no API Tester
             </Link>
-          </p>
+            {entry.kind === "rest_old" && (
+              <p className="text-xs text-muted">
+                O API Tester usa o prefixo <code className="font-mono">/api/public</code> (API pública do Fluig,
+                autenticada por OAuth 1.0a).
+              </p>
+            )}
+          </div>
         )}
 
       <p className="text-sm">
