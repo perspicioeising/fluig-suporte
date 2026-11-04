@@ -154,6 +154,16 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
+const LOCATION_LABELS: Record<string, string> = {
+  path: "path",
+  query: "query",
+  header: "header",
+  body: "body",
+  argument: "argumento",
+  soap_part: "parte SOAP",
+  return: "retorno",
+};
+
 function ParameterTable({
   title,
   items,
@@ -179,7 +189,9 @@ function ParameterTable({
             {items.map((p) => (
               <tr key={p.id}>
                 <td className="py-2 pr-4 font-mono text-xs">{p.name}</td>
-                <td className="py-2 pr-4 text-muted">{p.location}</td>
+                <td className="py-2 pr-4 text-muted">
+                  {LOCATION_LABELS[p.location] ?? p.location}
+                </td>
                 <td className="py-2 pr-4 text-muted">{p.data_type ?? "-"}</td>
                 <td className="py-2 pr-4">{p.is_required ? "Sim" : "Não"}</td>
                 <td className="py-2 text-muted">{p.description ?? "-"}</td>

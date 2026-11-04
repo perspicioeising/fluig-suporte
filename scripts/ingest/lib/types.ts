@@ -5,6 +5,7 @@ export type ParamLocation =
   | "query"
   | "header"
   | "body"
+  | "argument"
   | "soap_part"
   | "return";
 
@@ -33,6 +34,7 @@ export type NormalizedEntry = {
   summary: string | null;
   description: string | null;
   is_deprecated: boolean;
+  compatibility_notes?: string | null;
   tags: string[];
   examples: NormalizedExample[];
   parameters: NormalizedParameter[];
@@ -43,9 +45,27 @@ export type NormalizedEntry = {
   document_title: string;
 };
 
+/** Página de documentação conceitual, quebrada em trechos para o RAG. */
+export type ParsedDocument = {
+  sourceSlug: string;
+  url: string;
+  title: string;
+  chunks: { headingPath: string[]; content: string }[];
+};
+
+export type SourceDefinition = {
+  slug: string;
+  name: string;
+  kind: "rest_new" | "rest_old" | "soap" | "sdk" | "docs";
+  url: string;
+};
+
 export type ParseResult = {
   entries: NormalizedEntry[];
   warnings: string[];
+  /** Fontes novas a criar/atualizar antes de gravar. */
+  sources?: SourceDefinition[];
+  documents?: ParsedDocument[];
 };
 
 export const HTTP_METHODS = [

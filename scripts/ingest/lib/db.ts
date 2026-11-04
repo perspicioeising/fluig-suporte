@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { entryToChunk, sha256 } from "./chunk";
-import type { NormalizedEntry } from "./types";
+import type { NormalizedEntry, ParsedDocument, SourceDefinition } from "./types";
 
 /**
  * Escrita no catálogo usa a service role (ignora RLS) e roda SOMENTE em
@@ -37,11 +37,80 @@ export type PersistStats = {
   chunks: number;
 };
 
-/** Grava (upsert) as entradas de uma fonte e reconstrói parâmetros e chunks. */
+/** Cria ou atualiza uma fonte de documentação (chave: slug). */
+export async function ensureSource(db: SupabaseClient, source: SourceDefinition) {
+  const { error } = await db
+    .from("catalog_sources")
+    .upsert(source, { onConflict: "slug" });
+  if (error) fail(`Falha ao gravar a fonte "${source.slug}"`, error);
+}
+
+async function sourceIdOf(db: SupabaseClient, slug: string): Promise<string> {
+  const { data, error } = await db
+    .from("catalog_sources")
+    .select("id")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (error) fail("Falha ao consultar catalog_sources (as migrations foram executadas?)", error);
+  if (!data) throw new Error(`Fonte "${slug}" não existe em catalog_sources.`);
+  return data.id as string;
+}
+
+/** Grava documentos conceituais (somente texto) na base de conhecimento. */
+export async function persistDocuments(
+  db: SupabaseClient,
+  documents: ParsedDocument[],
+): Promise<{ documents: number; chunks: number }> {
+  let chunkCount = 0;
+
+  for (const doc of documents) {
+    const sourceId = await sourceIdOf(db, doc.sourceSlug);
+    const { data, error } = await db
+      .from("kb_documents")
+      .upsert(
+        {
+          source_id: sourceId,
+          url: doc.url,
+          title: doc.title,
+          content_hash: sha256(doc.chunks.map((c) => c.content).join("\n---\n")),
+          fetched_at: new Date().toISOString(),
+        },
+        { onConflict: "url" },
+      )
+      .select("id")
+      .single();
+    if (error) fail(`Falha ao gravar kb_documents (${doc.url})`, error);
+    const documentId = data.id as string;
+
+    const { error: delError } = await db.from("kb_chunks").delete().eq("document_id", documentId);
+    if (delError) fail("Falha ao limpar kb_chunks", delError);
+
+    const rows = doc.chunks.map((chunk, chunk_index) => ({
+      document_id: documentId,
+      chunk_index,
+      content: chunk.content,
+      metadata: { heading_path: chunk.headingPath },
+    }));
+    for (const batch of batches(rows, 100)) {
+      const { error: insError } = await db.from("kb_chunks").insert(batch);
+      if (insError) fail("Falha ao gravar kb_chunks", insError);
+      chunkCount += batch.length;
+    }
+  }
+
+  return { documents: documents.length, chunks: chunkCount };
+}
+
+/**
+ * Grava (upsert) as entradas de uma fonte e reconstrói parâmetros e chunks.
+ * `preserveDocumentUrls`: documentos da mesma fonte que NÃO devem ser removidos
+ * como obsoletos (ex.: páginas conceituais gravadas por persistDocuments).
+ */
 export async function persistSource(
   db: SupabaseClient,
   sourceSlug: string,
   entries: NormalizedEntry[],
+  preserveDocumentUrls: string[] = [],
 ): Promise<PersistStats> {
   const { data: source, error: sourceError } = await db
     .from("catalog_sources")
@@ -65,6 +134,7 @@ export async function persistSource(
       summary: e.summary,
       description: e.description,
       is_deprecated: e.is_deprecated,
+      compatibility_notes: e.compatibility_notes ?? null,
       tags: e.tags,
       examples: e.examples,
       source_url: e.source_url,
@@ -171,7 +241,11 @@ export async function persistSource(
     .limit(20_000);
   if (oldDocsError) fail("Falha ao listar kb_documents", oldDocsError);
   const staleDocs = (oldDocs ?? [])
-    .filter((d) => !byDocument.has(d.url as string))
+    .filter(
+      (d) =>
+        !byDocument.has(d.url as string) &&
+        !preserveDocumentUrls.includes(d.url as string),
+    )
     .map((d) => d.id as string);
   for (const batch of batches(staleDocs, 50)) {
     const { error } = await db.from("kb_documents").delete().in("id", batch);
