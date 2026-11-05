@@ -2,11 +2,13 @@
 
 import { ChunkedLogParser, type LogEvent } from "./log-parser";
 import { analyzeEvents, type LogSummary } from "./log-analysis";
-import { createIssueAccumulator, type IssueFinding } from "./known-issues";
+import { createIssueAccumulator, type IssueFinding, type SlowOperation } from "./known-issues";
 
 export type AnalysisResult = {
   summary: LogSummary;
   findings: IssueFinding[];
+  /** Operações lentas detectadas (JSChronos "executou por N segundos"). */
+  slowOperations: SlowOperation[];
   fileName: string;
   fileSize: number;
   /** Eventos retidos para a interface (não todos: ver MAX_KEPT_EVENTS). */
@@ -69,10 +71,12 @@ export async function analyzeLogFile(
   // Para env/timeline/contagem, usa todos (leves).
   const summary = analyzeEvents(events);
   const findings = issueAccumulator.result();
+  const slowOperations = issueAccumulator.slowOperations();
 
   return {
     summary,
     findings,
+    slowOperations,
     fileName: file.name,
     fileSize: file.size,
     keptErrorEvents,

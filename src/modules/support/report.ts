@@ -60,6 +60,13 @@ export function buildReport({ pkg, diagnosisMarkdown, diagnosisSources, now = ne
         L.push(`- **[${g.level} ${g.count}×]** ${g.exception ? `\`${g.exception}\` — ` : ""}${g.sample.slice(0, 180)}`);
       }
     }
+
+    if (pkg.logAnalysis.slowOperations.length > 0) {
+      L.push("\n### Operações lentas (monitor JSChronos)");
+      for (const op of pkg.logAnalysis.slowOperations.slice(0, 10)) {
+        L.push(`- **${op.name}** — até ${op.maxSeconds}s (${op.count}×)`);
+      }
+    }
   }
 
   // Configurações

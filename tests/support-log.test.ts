@@ -139,4 +139,45 @@ describe("problemas conhecidos", () => {
     );
     assert.equal(detectKnownIssues(asInfo).length, 0);
   });
+
+  test("detecta novos padrões do dicionário (personificação, timeout de serviço)", () => {
+    const { events } = parseLog(
+      [
+        "2026-07-09 08:00:00,000 ERROR [c] (t) Acesso negado: Usuário x sem permissão de personificação",
+        "2026-07-09 08:00:01,000 ERROR [com.fluig.authorize.client.CustomNoneAuthorize] (t) Connect to 177.1.1.1:8082 failed: Connection timed out",
+      ].join("\n"),
+    );
+    const ids = detectKnownIssues(events).map((f) => f.issue.id);
+    assert.ok(ids.includes("impersonation-denied"));
+    assert.ok(ids.includes("integration-service-timeout"));
+  });
+});
+
+describe("lentidão (JSChronos)", () => {
+  const LOG = [
+    "2026-07-09 08:00:00,000 WARN  [com.fluig.monitoring.jschronos.JSChronos] (default task-1) DatasetFactory.getDataset.ds_lento executou por 196 segundos",
+    "2026-07-09 08:01:00,000 WARN  [com.fluig.monitoring.jschronos.JSChronos] (default task-2) DatasetFactory.getDataset.ds_lento executou por 211 segundos",
+    "2026-07-09 08:02:00,000 WARN  [com.fluig.monitoring.jschronos.JSChronos] (default task-3) algo.rapido executou por 3 segundos",
+  ].join("\n");
+
+  test("agrega operações lentas pelo maior tempo e ignora as rápidas", () => {
+    const { events } = parseLog(LOG);
+    const acc = createIssueAccumulator();
+    for (const e of events) acc.feed(e);
+    const slow = acc.slowOperations();
+    assert.equal(slow.length, 1); // "algo.rapido" (3s) fica de fora (< 10s)
+    assert.equal(slow[0].name, "DatasetFactory.getDataset.ds_lento");
+    assert.equal(slow[0].maxSeconds, 211);
+    assert.equal(slow[0].count, 2);
+    assert.equal(slow[0].severity, "alta"); // > 60s
+  });
+
+  test("severidade média entre 10s e 60s", () => {
+    const { events } = parseLog(
+      "2026-07-09 08:00:00,000 WARN  [JSChronos] (t) consulta.media executou por 25 segundos",
+    );
+    const acc = createIssueAccumulator();
+    for (const e of events) acc.feed(e);
+    assert.equal(acc.slowOperations()[0].severity, "media");
+  });
 });

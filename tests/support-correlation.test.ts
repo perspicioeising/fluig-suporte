@@ -36,6 +36,7 @@ function fakeLog(findingIds: string[]): AnalysisResult {
       bucketMs: 60000,
     },
     findings: findingIds.map((id) => finding(id)),
+    slowOperations: [],
     fileName: "server.log",
     fileSize: 1000,
     keptErrorEvents: [],

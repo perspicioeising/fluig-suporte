@@ -78,7 +78,82 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     levels: ["WARN"],
     hint: "Cliente/integração tentando autenticar em MD5, que está desabilitado para a empresa. Geralmente é configuração do integrador, não falha do servidor.",
   },
+
+  // ---- Dicionário de Logs e páginas de performance (TDN) ----
+  {
+    id: "custom-event-error",
+    title: "Erro em evento customizado do cliente",
+    severity: "media",
+    pattern: /ERRO AO EXECUTAR SCRIPT|Executando evento :.*(?:NOK|Exception)|ScriptingLog.*(?:Erro|Exception)/i,
+    hint: "Um evento/customização do cliente lançou erro. Verifique o evento e a linha citada no log (o Fluig costuma indicar o número da linha do script).",
+  },
+  {
+    id: "impersonation-denied",
+    title: "Acesso negado por falta de permissão de personificação",
+    severity: "media",
+    pattern: /sem permiss[ãa]o de personifica|FDNAccessDeniedException.*personifica/i,
+    hint: "Integração tentou personificar um usuário sem permissão. Em OAuth application, no usuário aplicativo, habilite \"Permitir impersonalização\".",
+  },
+  {
+    id: "dataset-class-not-found",
+    title: "Classe não encontrada ao executar dataset",
+    severity: "media",
+    pattern: /Erro ao executar o dataset.*ClassNotFoundException|@ds_\w+ diz:.*ClassNotFoundException/i,
+    hint: "Um dataset chamou uma classe Java que o serviço não encontrou. Verifique a dependência/biblioteca referenciada no desenvolvimento.",
+  },
+  {
+    id: "integration-service-timeout",
+    title: "Timeout ao conectar a um serviço externo cadastrado",
+    severity: "alta",
+    pattern: /Connect to [\d.]+:\d+.*(?:Connection timed out|failed)|HttpHostConnectException/i,
+    hint: "Falha de comunicação com um serviço externo cadastrado no Fluig. Verifique se o serviço está disponível e se o servidor do Fluig alcança o endereço/porta (teste via Postman/SoapUI no próprio servidor).",
+  },
+  {
+    id: "war-access-denied",
+    title: "Permissão negada ao copiar/implantar arquivo (apps)",
+    severity: "alta",
+    pattern: /AccessDeniedException.*\.(?:war|ear|jar)|exists but is read-only|FileSystemException.*(?:pageIcon|apps)/i,
+    hint: "O processo não conseguiu gravar em pastas do Fluig (apps/pageIcon). Libere permissão de escrita para o usuário do serviço e verifique antivírus/backup varrendo as pastas.",
+  },
+  {
+    id: "widget-duplicated",
+    title: "Widget duplicada no deploy",
+    severity: "media",
+    pattern: /DuplicatedResourceException|wcmapplicationcenter\.duplicatedresource/i,
+    hint: "O deploy entende que a widget já existe. Para atualizar, o nome do widget, o context-root (jboss-web.xml) e o application.code (application.info) devem ser os mesmos da widget existente e únicos.",
+  },
+  {
+    id: "x11-fontconfig",
+    title: "Falha de fontes (X11/fontconfig) ao gerar relatório",
+    severity: "media",
+    pattern: /X11FontManager|FontConfiguration|libfontconfig/i,
+    hint: "Geração de relatório falhou por falta de biblioteca de fontes no servidor Linux. Instale a libfontconfig1.",
+  },
+  {
+    id: "native-lib-load",
+    title: "Falha ao carregar biblioteca nativa (.dll/.so)",
+    severity: "media",
+    pattern: /UnsatisfiedLinkError|jmscapi\.dll|side-by-side|configuração lado a lado/i,
+    hint: "Uma biblioteca nativa não carregou (ex.: assinatura digital). No Windows, instale o Microsoft Visual C++ Redistributable; verifique antivírus/backup varrendo as pastas do Fluig.",
+  },
 ];
+
+/**
+ * Lentidão: o JSChronos registra "<algo> executou por N segundos". Tratado à parte do
+ * catálogo porque a severidade depende do tempo (N) — extraímos o maior tempo observado.
+ */
+const SLOW_RE = /(?:JSChronos].*?)?([\w.$]+)\s+executou por\s+(\d+)\s+segundos/i;
+const SLOW_WARN_SECONDS = 10; // acima disso já é lento o bastante para anotar
+const SLOW_HIGH_SECONDS = 60; // acima de 1 min: severidade alta
+
+export type SlowOperation = {
+  /** Operação/dataset mais lento observado. */
+  name: string;
+  maxSeconds: number;
+  count: number;
+  severity: Severity;
+  firstLine: number;
+};
 
 export type IssueFinding = {
   issue: KnownIssue;
@@ -133,8 +208,27 @@ const SEVERITY_RANK: Record<Severity, number> = { alta: 0, media: 1, baixa: 2 };
  */
 export function createIssueAccumulator() {
   const found = new Map<string, IssueFinding>();
+  // Operações lentas (JSChronos), agregadas por nome: guardamos o maior tempo e a contagem.
+  const slow = new Map<string, { maxSeconds: number; count: number; firstLine: number }>();
+
+  function feedSlow(e: LogEvent) {
+    const m = SLOW_RE.exec(e.message);
+    if (!m) return;
+    const name = m[1];
+    const seconds = Number(m[2]);
+    if (!Number.isFinite(seconds) || seconds < SLOW_WARN_SECONDS) return;
+    const hit = slow.get(name);
+    if (hit) {
+      hit.maxSeconds = Math.max(hit.maxSeconds, seconds);
+      hit.count++;
+    } else {
+      slow.set(name, { maxSeconds: seconds, count: 1, firstLine: e.line });
+    }
+  }
+
   return {
     feed(e: LogEvent) {
+      feedSlow(e);
       const haystack = e.detail ? `${e.message}\n${e.detail}` : e.message;
       for (const issue of KNOWN_ISSUES) {
         if (issue.levels && !issue.levels.includes(e.level as "ERROR" | "FATAL" | "WARN")) continue;
@@ -160,6 +254,18 @@ export function createIssueAccumulator() {
       return [...found.values()].sort(
         (a, b) => SEVERITY_RANK[a.issue.severity] - SEVERITY_RANK[b.issue.severity] || b.count - a.count,
       );
+    },
+    /** Operações lentas observadas, da mais lenta para a menos. */
+    slowOperations(): SlowOperation[] {
+      return [...slow.entries()]
+        .map(([name, v]) => ({
+          name,
+          maxSeconds: v.maxSeconds,
+          count: v.count,
+          firstLine: v.firstLine,
+          severity: (v.maxSeconds >= SLOW_HIGH_SECONDS ? "alta" : "media") as Severity,
+        }))
+        .sort((a, b) => b.maxSeconds - a.maxSeconds);
     },
   };
 }

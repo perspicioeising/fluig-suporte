@@ -52,6 +52,22 @@ const PAGES: Record<string, PageConfig> = {
     kind: "soap",
     source: { slug: "tdn-662867789", name: "TDN - Documentação dos Web Services", kind: "soap", url: "https://tdn.totvs.com/pages/viewpage.action?pageId=662867789" },
   },
+  "715832745": {
+    kind: "docs",
+    source: { slug: "tdn-715832745", name: "TDN - Dicionário de Logs", kind: "docs", url: "https://tdn.totvs.com/pages/viewpage.action?pageId=715832745" },
+  },
+  "817650828": {
+    kind: "docs",
+    source: { slug: "tdn-817650828", name: "TDN - Métodos de contorno de lentidão (2.0+)", kind: "docs", url: "https://tdn.totvs.com/pages/viewpage.action?pageId=817650828" },
+  },
+  "941662164": {
+    kind: "docs",
+    source: { slug: "tdn-941662164", name: "TDN - Métodos de contorno de lentidão (1.6 a 1.8.2)", kind: "docs", url: "https://tdn.totvs.com/pages/viewpage.action?pageId=941662164" },
+  },
+  "819058035": {
+    kind: "docs",
+    source: { slug: "tdn-819058035", name: "TDN - Erros comuns ao instalar/atualizar a plataforma", kind: "docs", url: "https://tdn.totvs.com/pages/viewpage.action?pageId=819058035" },
+  },
 };
 
 export const SOAP_SOURCE_SLUG = "tdn-662867789";

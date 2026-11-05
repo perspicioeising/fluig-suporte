@@ -88,7 +88,10 @@ export function chunkWikiContent(
   pageTitle: string,
   stopAtHeading?: RegExp,
 ): Chunk[] {
-  const root = $("#main-content .wiki-content").first();
+  // Algumas páginas têm o conteúdo em #main-content .wiki-content; outras (ex.: tabelas grandes
+  // como o Dicionário de Logs) o conteúdo fica direto em #main-content. Usa o que tiver filhos.
+  const inner = $("#main-content .wiki-content").first();
+  const root = inner.length && inner.children().length ? inner : $("#main-content").first();
   const chunks: Chunk[] = [];
   const path: string[] = [];
   let buffer: string[] = [];

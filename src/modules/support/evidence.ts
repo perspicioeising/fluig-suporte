@@ -61,6 +61,16 @@ export function buildEvidenceText(pkg: EvidencePackage, maxErrorGroups = 8): str
           .join("\n"),
       );
     }
+
+    if (pkg.logAnalysis.slowOperations.length > 0) {
+      parts.push("### Operações lentas (monitor JSChronos)");
+      parts.push(
+        pkg.logAnalysis.slowOperations
+          .slice(0, 10)
+          .map((op) => `- ${op.name}: até ${op.maxSeconds}s (${op.count}×)`)
+          .join("\n"),
+      );
+    }
   }
 
   // Configurações
@@ -99,7 +109,8 @@ export function hasEvidence(pkg: EvidencePackage): boolean {
     !!pkg.logAnalysis &&
     (pkg.logAnalysis.findings.length > 0 ||
       pkg.logAnalysis.summary.counts.ERROR > 0 ||
-      pkg.logAnalysis.summary.errorGroups.length > 0);
+      pkg.logAnalysis.summary.errorGroups.length > 0 ||
+      pkg.logAnalysis.slowOperations.length > 0);
   const configHas = pkg.configs.some((c) => c.issues.length > 0);
   return logHas || configHas || pkg.correlations.length > 0;
 }

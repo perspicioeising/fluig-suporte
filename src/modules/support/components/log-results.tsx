@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, Gauge, Info, ListTree, Server } from "lucide-react";
+import { Activity, Clock, Gauge, Info, ListTree, Server } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AnalysisResult } from "../stream-reader";
 import type { LogLevel } from "../log-parser";
@@ -149,6 +149,28 @@ export function LogResults({ result }: { result: AnalysisResult }) {
           </ul>
         )}
       </Card>
+
+      {/* Lentidão (JSChronos) */}
+      {result.slowOperations.length > 0 && (
+        <Card title={`Operações lentas (${result.slowOperations.length})`} icon={Clock}>
+          <p className="text-xs text-muted">
+            O monitor do Fluig (JSChronos) registrou operações que demoraram a executar. Tempos altos indicam
+            gargalo (ex.: dataset/consulta pesada, serviço externo lento).
+          </p>
+          <ul className="divide-y divide-border">
+            {result.slowOperations.slice(0, 30).map((op) => (
+              <li key={op.name} className="flex flex-wrap items-center gap-2 py-2 text-sm">
+                <span className={cn("rounded border px-1.5 py-0.5 text-[11px] font-medium", SEVERITY_STYLE[op.severity])}>
+                  {SEVERITY_LABEL[op.severity]}
+                </span>
+                <span className="font-mono tabular-nums text-danger">{op.maxSeconds}s</span>
+                <span className="min-w-0 flex-1 truncate font-mono text-xs" title={op.name}>{op.name}</span>
+                <span className="shrink-0 text-xs text-muted">{op.count}×</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       <Timeline result={result} />
 
