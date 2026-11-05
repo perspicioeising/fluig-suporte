@@ -7,6 +7,7 @@ import type { EnvironmentSummary } from "@/modules/environments/constants";
 import type { BuilderEntry } from "@/modules/builder/types";
 import { BuilderPanel } from "@/modules/builder/components/builder-panel";
 import { InlineTester } from "@/modules/tester/components/inline-tester";
+import { InlineSoapTester } from "@/modules/soap/components/inline-soap-tester";
 import { EntryAssist, type AssistTab } from "./entry-assist";
 
 type TabId = "doc" | "test" | "code";
@@ -28,7 +29,9 @@ export function EntryTabs({
 }) {
   const { entry, parameters } = builderEntry;
   const isRest = entry.kind === "rest_new" || entry.kind === "rest_old";
-  const canTest = isRest && Boolean(entry.path && entry.http_method);
+  const isSoap = entry.kind === "soap";
+  // REST: precisa de caminho+método. SOAP: a aba sempre aparece (orienta a importar o WSDL se faltar).
+  const canTest = (isRest && Boolean(entry.path && entry.http_method)) || isSoap;
   const activeEnvs = environments.filter((e) => e.is_active);
 
   const [tab, setTab] = useState<TabId>("doc");
@@ -88,10 +91,19 @@ export function EntryTabs({
 
         <div hidden={tab !== "doc"}>{children}</div>
 
-        {canTest && tab === "test" && (
+        {tab === "test" && isRest && (
           <InlineTester
             entry={entry}
             parameters={parameters}
+            environments={environments}
+            onDiagnose={handleDiagnose}
+          />
+        )}
+
+        {tab === "test" && isSoap && (
+          <InlineSoapTester
+            op={builderEntry.soapOperation}
+            wsdlId={builderEntry.soapWsdlId}
             environments={environments}
             onDiagnose={handleDiagnose}
           />
