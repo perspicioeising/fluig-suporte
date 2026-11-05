@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { FlaskConical, Loader2, RotateCcw, Send, Stethoscope, Wand2 } from "lucide-react";
+import { Loader2, RotateCcw, Send, Stethoscope, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { EnvironmentSummary } from "@/modules/environments/constants";
 import { ResponseView } from "@/modules/tester/components/response-view";
@@ -10,6 +10,7 @@ import { buildSoapEnvelope, ENV_PASSWORD, ENV_USERNAME, prettyXml } from "../env
 import { resolveEndpoint } from "../endpoint";
 import { isReadOnlySoapName } from "../guard";
 import type { SoapExecuteResponse, SoapOperationRecord } from "../schemas";
+import { InlineWsdlImport } from "./inline-wsdl-import";
 
 const fieldClass = "rounded-md border border-border bg-surface-2 px-3 py-2 text-sm placeholder:text-muted";
 
@@ -21,12 +22,15 @@ const fieldClass = "rounded-md border border-border bg-surface-2 px-3 py-2 text-
 export function InlineSoapTester({
   op,
   wsdlId,
+  serviceName,
   environments,
   onDiagnose,
 }: {
   /** Operação do WSDL importado; null quando não há WSDL para esta entrada. */
   op: SoapOperationRecord | null;
   wsdlId: string | null;
+  /** Nome do serviço da entrada (ex.: ECMBusinessPeriodService), para importar o WSDL dele. */
+  serviceName: string;
   environments: EnvironmentSummary[];
   onDiagnose?: (summary: string, environmentId: string) => void;
 }) {
@@ -37,26 +41,10 @@ export function InlineSoapTester({
   const [response, setResponse] = useState<SoapExecuteResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Sem WSDL importado: não dá para montar a chamada real (endpoint/SOAPAction são marcadores).
+  // Sem WSDL importado: oferece importar o WSDL ali mesmo (do ambiente ou por arquivo).
+  // Ao importar, a página revalida e esta aba passa a receber `op`, mostrando o testador.
   if (!op) {
-    return (
-      <section aria-label="Testar SOAP" className="space-y-3 rounded-lg border border-dashed border-border bg-surface p-4">
-        <p className="text-sm">
-          Para testar esta operação aqui, importe o WSDL do serviço no Laboratório SOAP. O endpoint, a SOAPAction e o
-          namespace exatos vêm do WSDL do seu ambiente.
-        </p>
-        <Link
-          href="/soap"
-          className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface-2"
-        >
-          <FlaskConical className="size-4 text-accent" aria-hidden />
-          Importar o WSDL no Laboratório SOAP
-        </Link>
-        <p className="text-xs text-muted">
-          Enquanto isso, a aba <strong>Código</strong> gera o envelope e exemplos de chamada (cURL, JavaScript, Java).
-        </p>
-      </section>
-    );
+    return <InlineWsdlImport serviceName={serviceName} environments={environments} />;
   }
 
   const env = environments.find((e) => e.id === envId);

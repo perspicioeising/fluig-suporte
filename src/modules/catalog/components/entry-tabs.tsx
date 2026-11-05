@@ -104,6 +104,7 @@ export function EntryTabs({
           <InlineSoapTester
             op={builderEntry.soapOperation}
             wsdlId={builderEntry.soapWsdlId}
+            serviceName={entry.name.includes(".") ? entry.name.split(".")[0] : entry.name}
             environments={environments}
             onDiagnose={handleDiagnose}
           />
