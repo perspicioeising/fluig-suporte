@@ -20,6 +20,12 @@ export type KnownIssue = {
   hint: string;
   /** Procedimento oficial (Central de Atendimento TOTVS). */
   reference?: string;
+  /**
+   * Termos de busca (pt-BR) usados para localizar a página oficial correspondente na base
+   * de conhecimento (search_kb_chunks). Curados para casar com os títulos do TDN já ingeridos.
+   * Sem isto, o problema não busca solução automática na base.
+   */
+  kbQuery?: string;
 };
 
 export const KNOWN_ISSUES: KnownIssue[] = [
@@ -30,6 +36,7 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     pattern: /Communications link failure|Connection (?:refused|reset|timed out|is not available)|Could not (?:open|get) .*connection|CannotGetJdbcConnection|No operations allowed after connection closed|ORA-\d|SQLState/i,
     hint: "Há indícios de falha ao conectar ao banco. Verifique a disponibilidade do banco, a connection-url e o pool do datasource.",
     reference: "https://centraldeatendimento.totvs.com/hc/pt-br/articles/27663436384663",
+    kbQuery: "configuração banco de dados conexão datasource pool",
   },
   {
     id: "port-in-use",
@@ -38,6 +45,7 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     pattern: /Address already in use|bind.*(?:failed|in use)|BindException/i,
     hint: "Uma porta necessária já está em uso. Verifique se há outra instância do Fluig ou outro serviço ocupando a porta.",
     reference: "https://centraldeatendimento.totvs.com/hc/pt-br/articles/27663524686871",
+    kbQuery: "portas e endereços alterar porta de acesso à plataforma conjunto de portas",
   },
   {
     id: "update-failed",
@@ -69,6 +77,7 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     severity: "alta",
     pattern: /OutOfMemoryError|Java heap space|Metaspace|GC overhead limit exceeded/i,
     hint: "Esgotamento de memória da JVM. Confira -Xmx e MetaspaceSize no standalone.conf frente à RAM da máquina e à carga.",
+    kbQuery: "dimensionamento memória consumo servidor aplicação JAVA_OPTS",
   },
   {
     id: "md5-login-disabled",
@@ -86,6 +95,7 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     severity: "media",
     pattern: /ERRO AO EXECUTAR SCRIPT|Executando evento :.*(?:NOK|Exception)|ScriptingLog.*(?:Erro|Exception)/i,
     hint: "Um evento/customização do cliente lançou erro. Verifique o evento e a linha citada no log (o Fluig costuma indicar o número da linha do script).",
+    kbQuery: "desenvolvimento de eventos tratamento de exceções logs em personalização",
   },
   {
     id: "impersonation-denied",
@@ -93,6 +103,7 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     severity: "media",
     pattern: /sem permiss[ãa]o de personifica|FDNAccessDeniedException.*personifica/i,
     hint: "Integração tentou personificar um usuário sem permissão. Em OAuth application, no usuário aplicativo, habilite \"Permitir impersonalização\".",
+    kbQuery: "personificação acessar API cliente OAuth autorização client serviços REST",
   },
   {
     id: "dataset-class-not-found",
@@ -100,6 +111,7 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     severity: "media",
     pattern: /Erro ao executar o dataset.*ClassNotFoundException|@ds_\w+ diz:.*ClassNotFoundException/i,
     hint: "Um dataset chamou uma classe Java que o serviço não encontrou. Verifique a dependência/biblioteca referenciada no desenvolvimento.",
+    kbQuery: "desenvolvimento de datasets construção dataset avançado acessando datasets",
   },
   {
     id: "integration-service-timeout",
@@ -107,6 +119,7 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     severity: "alta",
     pattern: /Connect to [\d.]+:\d+.*(?:Connection timed out|failed)|HttpHostConnectException/i,
     hint: "Falha de comunicação com um serviço externo cadastrado no Fluig. Verifique se o serviço está disponível e se o servidor do Fluig alcança o endereço/porta (teste via Postman/SoapUI no próprio servidor).",
+    kbQuery: "cadastro de serviço integração com aplicativos externos configuração certificado HTTPS",
   },
   {
     id: "war-access-denied",
@@ -121,6 +134,7 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     severity: "media",
     pattern: /DuplicatedResourceException|wcmapplicationcenter\.duplicatedresource/i,
     hint: "O deploy entende que a widget já existe. Para atualizar, o nome do widget, o context-root (jboss-web.xml) e o application.code (application.info) devem ser os mesmos da widget existente e únicos.",
+    kbQuery: "arquivo application.info primeiros passos no desenvolvimento de widgets",
   },
   {
     id: "x11-fontconfig",
@@ -128,6 +142,7 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     severity: "media",
     pattern: /X11FontManager|FontConfiguration|libfontconfig/i,
     hint: "Geração de relatório falhou por falta de biblioteca de fontes no servidor Linux. Instale a libfontconfig1.",
+    kbQuery: "configurações sugeridas em ambientes Linux desenvolvimento de relatórios",
   },
   {
     id: "native-lib-load",

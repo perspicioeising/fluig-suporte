@@ -1,11 +1,71 @@
 "use client";
 
-import { Activity, Clock, Gauge, Info, ListTree, Server } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Activity, BookOpen, Clock, Gauge, Info, ListTree, Server } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AnalysisResult } from "../stream-reader";
 import type { LogLevel } from "../log-parser";
 import type { Severity } from "../known-issues";
+import { SLOW_SOLUTION_ID, type IssueSolution } from "../solutions-types";
 import { formatBytes, formatDuration, formatLogTime } from "../format";
+
+/**
+ * Busca, após a análise, as páginas oficiais (TDN) correspondentes aos problemas detectados.
+ * Determinístico e sem IA: leva o analista direto à solução documentada. Falha silenciosa
+ * (a base pode não estar instalada) — nesse caso nenhuma sugestão é exibida.
+ */
+function useSolutions(result: AnalysisResult): Map<string, IssueSolution> {
+  const [byIssue, setByIssue] = useState<Map<string, IssueSolution>>(new Map());
+
+  const issueIds = result.findings.map((f) => f.issue.id).join(",");
+  const hasSlow = result.slowOperations.length > 0;
+
+  useEffect(() => {
+    const ids = issueIds ? issueIds.split(",") : [];
+    if (ids.length === 0 && !hasSlow) return;
+    const controller = new AbortController();
+    void (async () => {
+      try {
+        const res = await fetch("/api/support/solutions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ issueIds: ids, hasSlow }),
+          signal: controller.signal,
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as { solutions?: IssueSolution[] };
+        const map = new Map<string, IssueSolution>();
+        for (const s of data.solutions ?? []) map.set(s.issueId, s);
+        if (!controller.signal.aborted) setByIssue(map);
+      } catch {
+        // rede/base indisponível: segue sem sugestões
+      }
+    })();
+    return () => controller.abort();
+  }, [issueIds, hasSlow]);
+
+  return byIssue;
+}
+
+function SolutionLink({ solution }: { solution: IssueSolution }) {
+  return (
+    <div className="mt-2 rounded-md border border-accent/30 bg-accent/5 p-2.5">
+      <p className="flex items-center gap-1.5 text-xs font-medium text-accent">
+        <BookOpen className="size-3.5 shrink-0" aria-hidden />
+        Solução na documentação oficial
+      </p>
+      <a
+        href={solution.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-0.5 inline-block text-sm font-medium hover:underline"
+      >
+        {solution.title}
+      </a>
+      {solution.snippet && <p className="mt-1 text-xs text-muted">{solution.snippet}…</p>}
+    </div>
+  );
+}
 
 const LEVEL_STYLE: Record<LogLevel, string> = {
   FATAL: "text-danger",
@@ -66,6 +126,7 @@ function Timeline({ result }: { result: AnalysisResult }) {
 export function LogResults({ result }: { result: AnalysisResult }) {
   const { summary, findings } = result;
   const counts = summary.counts;
+  const solutions = useSolutions(result);
 
   return (
     <div className="space-y-4">
@@ -144,6 +205,7 @@ export function LogResults({ result }: { result: AnalysisResult }) {
                     Procedimento oficial (Central de Atendimento TOTVS)
                   </a>
                 )}
+                {solutions.get(f.issue.id) && <SolutionLink solution={solutions.get(f.issue.id)!} />}
               </li>
             ))}
           </ul>
@@ -169,6 +231,7 @@ export function LogResults({ result }: { result: AnalysisResult }) {
               </li>
             ))}
           </ul>
+          {solutions.get(SLOW_SOLUTION_ID) && <SolutionLink solution={solutions.get(SLOW_SOLUTION_ID)!} />}
         </Card>
       )}
 
