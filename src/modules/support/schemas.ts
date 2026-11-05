@@ -10,6 +10,16 @@ export const SolutionsRequestSchema = z.object({
     .max(40)
     .catch([]),
   hasSlow: z.boolean().catch(false),
+  /** Pares id→query para achados de config (ids dinâmicos). */
+  queries: z
+    .array(
+      z.object({
+        id: z.string().max(80),
+        query: z.string().max(200),
+      }),
+    )
+    .max(40)
+    .catch([]),
 });
 
 export type SolutionsRequest = z.infer<typeof SolutionsRequestSchema>;

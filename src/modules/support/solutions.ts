@@ -34,12 +34,22 @@ async function bestMatch(
   };
 }
 
+/** Par id → termos de busca, usado para achados de config (ids dinâmicos). */
+export type SolutionQuery = { id: string; query: string };
+
 /**
- * Para cada problema informado (ids) e, opcionalmente, o grupo de lentidão, busca a página
- * oficial correspondente. Usa o cliente do usuário (RLS): só enxerga a base do próprio workspace.
- * Problemas sem `kbQuery` são ignorados (não há busca a fazer).
+ * Busca a página oficial correspondente a cada problema. Entradas:
+ *  - `issueIds`: ids de problemas conhecidos do log (a query vem do catálogo KNOWN_ISSUES).
+ *  - `hasSlow`: inclui o grupo de operações lentas (JSChronos).
+ *  - `queries`: pares id→query diretos (achados de config, cujos ids são dinâmicos).
+ * Usa o cliente do usuário (RLS): só enxerga a base do próprio workspace. Problemas sem
+ * query são ignorados. Ids repetidos são resolvidos uma única vez.
  */
-export async function findSolutions(issueIds: string[], hasSlow: boolean): Promise<IssueSolution[]> {
+export async function findSolutions(
+  issueIds: string[],
+  hasSlow: boolean,
+  queries: SolutionQuery[] = [],
+): Promise<IssueSolution[]> {
   const supabase = await createClient();
 
   const rpc = async (query: string): Promise<SearchRow[]> => {
@@ -51,20 +61,20 @@ export async function findSolutions(issueIds: string[], hasSlow: boolean): Promi
     return (data ?? []) as SearchRow[];
   };
 
+  // Monta a lista de buscas (id → query), sem duplicar ids.
+  const byId = new Map<string, string>();
   const wanted = new Set(issueIds);
-  const tasks: Promise<IssueSolution | null>[] = [];
-
   for (const issue of KNOWN_ISSUES) {
-    if (!wanted.has(issue.id) || !issue.kbQuery) continue;
-    const query = issue.kbQuery;
-    tasks.push(
-      bestMatch(rpc, query).then((m) => (m ? { issueId: issue.id, ...m } : null)),
-    );
+    if (wanted.has(issue.id) && issue.kbQuery) byId.set(issue.id, issue.kbQuery);
+  }
+  if (hasSlow) byId.set(SLOW_SOLUTION_ID, SLOW_QUERY);
+  for (const q of queries) {
+    if (q.id && q.query && !byId.has(q.id)) byId.set(q.id, q.query);
   }
 
-  if (hasSlow) {
-    tasks.push(bestMatch(rpc, SLOW_QUERY).then((m) => (m ? { issueId: SLOW_SOLUTION_ID, ...m } : null)));
-  }
+  const tasks = [...byId.entries()].map(([issueId, query]) =>
+    bestMatch(rpc, query).then((m) => (m ? { issueId, ...m } : null)),
+  );
 
   const results = await Promise.all(tasks);
   return results.filter((r): r is IssueSolution => r !== null);

@@ -35,13 +35,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "JSON inválido." }, { status: 400 });
   }
 
-  const { issueIds, hasSlow } = SolutionsRequestSchema.parse(payload);
-  if (issueIds.length === 0 && !hasSlow) {
+  const { issueIds, hasSlow, queries } = SolutionsRequestSchema.parse(payload);
+  if (issueIds.length === 0 && !hasSlow && queries.length === 0) {
     return NextResponse.json({ solutions: [] }, { headers: { "Cache-Control": "no-store" } });
   }
 
   try {
-    const solutions = await findSolutions(issueIds, hasSlow);
+    const solutions = await findSolutions(issueIds, hasSlow, queries);
     return NextResponse.json({ solutions }, { headers: { "Cache-Control": "no-store" } });
   } catch {
     // Falha na base não deve quebrar a tela de análise: devolve vazio.

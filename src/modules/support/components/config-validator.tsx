@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { KIND_INFO, maskConfigSecrets, parseConfig, type ParsedConfig } from "../config-parser";
 import { validateConfig, type ConfigIssue, type VersionContext } from "../config-validation";
 import type { Severity } from "../known-issues";
+import { SolutionLink, useSolutions } from "./solution-link";
 
 const fieldClass = "rounded-md border border-border bg-surface-2 px-3 py-2 text-sm placeholder:text-muted";
 
@@ -154,6 +155,11 @@ export function ConfigValidator({ onResults }: { onResults?: (list: Analyzed[]) 
 function ConfigCard({ analyzed }: { analyzed: Analyzed }) {
   const { fileName, parsed, issues } = analyzed;
   const info = KIND_INFO[parsed.kind];
+  const solutions = useSolutions({
+    queries: issues
+      .filter((i) => i.kbQuery)
+      .map((i) => ({ id: i.id, query: i.kbQuery as string })),
+  });
 
   return (
     <section className="space-y-3 rounded-lg border border-border bg-surface p-4">
@@ -235,6 +241,7 @@ function ConfigCard({ analyzed }: { analyzed: Analyzed }) {
                     Procedimento oficial (Central de Atendimento TOTVS)
                   </a>
                 )}
+                {solutions.get(i.id) && <SolutionLink solution={solutions.get(i.id)!} />}
               </li>
             ))}
           </ul>
