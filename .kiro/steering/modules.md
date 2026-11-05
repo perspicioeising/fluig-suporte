@@ -15,7 +15,8 @@ Contadores reais (ambientes, requisições salvas, WSDLs), últimas requisiçõe
 - Busca **ao digitar**, case-insensitive, vários termos (AND) via `ILIKE`. Filtros: tipo (`kind`), método HTTP, **assunto** e grupo (`tags`).
 - **Assunto** = classificação do **próprio Studio** (`catalog/topics.ts`), **não** da doc oficial. Em soap/sdk ignora `path` (é assinatura). Depende da migration 7 → degrada se faltar.
 - `queries.ts`: `searchEntries` (filtros + termos), `getFacets` (grupos distintos + flag de topics), `getEntry`.
-- Detalhe: parâmetros (entrada/saída), exemplos, link para a fonte oficial, nota de compatibilidade quando a doc é inconsistente, atalhos **Gerar código** (Construtor) e **Abrir no API Tester** (REST, com `/api/public` no antigo).
+- **Detalhe unificado** (`catalog/components/entry-tabs.tsx`): hub com 3 abas — **Documentação** (server-rendered, passada como children), **Testar** (só REST; `tester/components/inline-tester.tsx`, executa na própria página) e **Código** (`builder/components/builder-panel.tsx` com `showCatalogLink={false}`). O cabeçalho (método/nome/caminho/fonte) fica acima das abas. O Construtor (`/construtor`) e o Tester (`/tester`) continuam como telas próprias.
+- Execução embutida e standalone compartilham `tester/use-execute.ts` (hook `useExecuteRequest`) e `ResponseView`/`KeyValueEditor`.
 
 ## Construtor (`/construtor`)
 

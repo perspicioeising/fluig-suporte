@@ -14,12 +14,12 @@ import {
   READ_ONLY_METHODS,
   type BodyType,
   type CollectionWithRequests,
-  type ExecuteResponse,
   type HistoryItem,
   type HttpMethod,
   type KeyValue,
   type SavedRequest,
 } from "../schemas";
+import { useExecuteRequest } from "../use-execute";
 import { KeyValueEditor } from "./key-value-editor";
 import { ResponseView } from "./response-view";
 import { TesterSidebar } from "./tester-sidebar";
@@ -70,9 +70,7 @@ export function TesterWorkspace({
     prefill && prefill.query.length === 0 && prefill.body ? "body" : "params",
   );
 
-  const [loading, setLoading] = useState(false);
-  const [response, setResponse] = useState<ExecuteResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { loading, response, error, execute, reset } = useExecuteRequest(() => router.refresh());
 
   const [saveOpen, setSaveOpen] = useState(false);
   const [saveName, setSaveName] = useState("");
@@ -91,42 +89,8 @@ export function TesterWorkspace({
     .filter((r) => r.enabled && r.required && r.key && !r.value.trim())
     .map((r) => r.key);
 
-  async function send() {
-    setLoading(true);
-    setError(null);
-    setResponse(null);
-    try {
-      const res = await fetch("/api/tester/execute", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          environmentId: envId,
-          method,
-          path: path.trim() || "/",
-          query,
-          headers,
-          bodyType,
-          body: bodyType === "none" ? undefined : body,
-        }),
-      });
-
-      const type = res.headers.get("content-type") ?? "";
-      if (res.redirected || !type.includes("application/json")) {
-        setError("Sessão expirada. Recarregue a página e entre novamente.");
-        return;
-      }
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Não foi possível executar a requisição.");
-        return;
-      }
-      setResponse(data as ExecuteResponse);
-      router.refresh(); // atualiza o histórico
-    } catch {
-      setError("Falha de comunicação com o servidor.");
-    } finally {
-      setLoading(false);
-    }
+  function send() {
+    void execute({ environmentId: envId, method, path, query, headers, bodyType, body });
   }
 
   function loadSaved(request: SavedRequest) {
@@ -139,8 +103,7 @@ export function TesterWorkspace({
     if (request.environment_id && environments.some((e) => e.id === request.environment_id)) {
       setEnvId(request.environment_id);
     }
-    setResponse(null);
-    setError(null);
+    reset();
   }
 
   function loadHistory(item: HistoryItem) {
@@ -167,8 +130,7 @@ export function TesterWorkspace({
     if (item.environment_id && environments.some((e) => e.id === item.environment_id)) {
       setEnvId(item.environment_id);
     }
-    setResponse(null);
-    setError(null);
+    reset();
   }
 
   async function save() {

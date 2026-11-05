@@ -19,9 +19,12 @@ const PLACEHOLDER_BASE = "https://SEU_FLUIG";
 export function BuilderPanel({
   data,
   environments,
+  /** Esconde o link "Ver documentação no catálogo" quando o painel já está dentro do catálogo. */
+  showCatalogLink = true,
 }: {
   data: BuilderEntry;
   environments: BuilderEnvironment[];
+  showCatalogLink?: boolean;
 }) {
   const { entry } = data;
   const [envId, setEnvId] = useState(environments[0]?.id ?? "");
@@ -43,9 +46,11 @@ export function BuilderPanel({
         {entry.path && <p className="font-mono text-xs text-muted break-all">{entry.path}</p>}
         {entry.summary && <p className="text-sm">{entry.summary}</p>}
         <div className="flex flex-wrap items-center gap-3 pt-1 text-sm">
-          <Link href={`/catalogo/${entry.id}`} className="text-accent hover:underline">
-            Ver documentação no catálogo
-          </Link>
+          {showCatalogLink && (
+            <Link href={`/catalogo/${entry.id}`} className="text-accent hover:underline">
+              Ver documentação no catálogo
+            </Link>
+          )}
           <a
             href={entry.source_url}
             target="_blank"

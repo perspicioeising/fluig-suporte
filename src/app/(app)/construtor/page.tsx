@@ -120,7 +120,7 @@ async function BuilderContent({ searchParams }: { searchParams: Promise<RawSearc
           <p className="rounded-lg border border-dashed border-border bg-surface p-6 text-sm text-muted">
             {entryId
               ? "Entrada não encontrada."
-              : "Selecione uma entrada na lista (ou use o botão \"Gerar código\" no catálogo) para ver os exemplos."}
+              : "Selecione uma entrada na lista (ou abra uma API no catálogo e use a aba \"Código\") para ver os exemplos."}
           </p>
         )}
       </div>

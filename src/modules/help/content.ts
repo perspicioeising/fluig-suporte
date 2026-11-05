@@ -63,7 +63,7 @@ Siga esta ordem na primeira vez. Leva poucos minutos.
 2. **Cadastre um ambiente** em **Configurações**. Informe um nome (por exemplo "QA"), a URL base (por exemplo ‵https://meu-ambiente.fluig.com‵) e o tipo de autenticação. Veja [Ambientes e credenciais](#ambientes-credenciais) para escolher o tipo certo.
 3. **Cadastre as credenciais** do ambiente (no cartão do ambiente, abra "Credenciais"). Elas são cifradas e nunca mais exibidas.
 4. **Explore o catálogo** em **APIs Fluig**. Busque por um método (ex.: ‵getAvailableDatasets‵), serviço (‵ECMDatasetService‵) ou caminho.
-5. **Gere código** com o botão **Gerar código** de uma entrada, ou **teste a chamada** com **Abrir no API Tester**.
+5. Abra uma entrada: no detalhe você **vê a documentação**, **testa a chamada** (aba Testar, para REST) e **gera código** (aba Código), tudo no mesmo lugar.
 6. **Execute uma chamada de leitura (GET)** no API Tester para confirmar que o ambiente e as credenciais estão corretos antes de qualquer outra coisa.
 
 > **Dica:** se a primeira chamada falhar, abra **Diagnóstico** e use **Diagnosticar este erro** na própria resposta. A seção [Problemas comuns](#problemas-comuns) também cobre os casos mais frequentes.
@@ -166,11 +166,15 @@ O catálogo reúne entradas importadas da documentação oficial. Cada entrada m
 4. Clique em uma entrada para ver o detalhe. A lista é paginada (20 por página).
 > O **assunto** é uma classificação do próprio Studio, feita a partir do nome, do caminho e dos grupos oficiais da entrada, só para facilitar a navegação. Não vem da documentação oficial e uma entrada pode ter mais de um assunto. Os filtros de busca e de método também existem no **Construtor**.
 
-### No detalhe da entrada
+### No detalhe da entrada — tudo no mesmo lugar
 
-- **Gerar código** abre o Construtor com a entrada já selecionada.
-- **Abrir no API Tester** (entradas REST) leva o método e o caminho para o Tester. Nas entradas do **REST antigo** o app acrescenta o prefixo ‵/api/public‵ automaticamente.
-- **Fonte oficial** abre a página de origem.
+O detalhe reúne três abas, sem precisar trocar de tela:
+
+- **Documentação** — descrição, parâmetros de entrada e saída, exemplos e compatibilidade.
+- **Testar** (entradas REST) — o **API Tester embutido**: escolha o ambiente, preencha os parâmetros (os **obrigatórios** já aparecem listados, marcados com ‵*‵) e clique em **Executar**. A resposta aparece ali mesmo. Nas entradas do **REST antigo** o prefixo ‵/api/public‵ é aplicado automaticamente. Para recursos avançados (coleções, salvar requisições), há o link **Abrir o API Tester completo**.
+- **Código** — gera exemplos em cURL, JavaScript, Java, JSON e XML/SOAP a partir da entrada.
+
+Fora das abas: **Fonte oficial** abre a página de origem.
 - Algumas entradas SOAP trazem uma **nota de compatibilidade** quando a própria documentação do TDN é inconsistente (por exemplo, nome da linha diferente do nome da assinatura). Nesses casos, confirme no WSDL do seu ambiente.
 - Entradas **depreciadas** são marcadas.
 `,
