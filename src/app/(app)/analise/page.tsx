@@ -1,20 +1,21 @@
 import type { Metadata } from "next";
-import { LogAnalyzer } from "@/modules/support/components/log-analyzer";
+import { SupportTabs } from "@/modules/support/components/support-tabs";
 
-export const metadata: Metadata = { title: "Análise de Logs" };
+export const metadata: Metadata = { title: "Análise de Logs e Configurações" };
 
 export default function AnalysisPage() {
   return (
     <section className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Análise de Logs</h1>
+        <h1 className="text-2xl font-semibold">Análise de Logs e Configurações</h1>
         <p className="text-sm text-muted">
-          Envie o <code className="font-mono">server.log</code> do Fluig para identificar erros, exceções e padrões
-          conhecidos, ver a linha do tempo e o ambiente do servidor. O arquivo é processado no seu navegador e não é
-          enviado a nenhum servidor.
+          Analise o <code className="font-mono">server.log</code> e os arquivos de configuração do Fluig
+          (<code className="font-mono">standalone.xml</code>, <code className="font-mono">domain.xml</code>,{" "}
+          <code className="font-mono">host.xml</code>, <code className="font-mono">standalone.conf</code>) para
+          investigar problemas. Tudo é processado no seu navegador e não é enviado a nenhum servidor.
         </p>
       </div>
-      <LogAnalyzer />
+      <SupportTabs />
     </section>
   );
 }

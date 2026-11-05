@@ -56,13 +56,14 @@ export const NAV_ITEMS: NavItem[] = [
   {
     href: "/soap",
     label: "Webservices SOAP",
+    advanced: true,
     description: "Importe WSDL, monte envelopes e teste chamadas.",
     icon: FlaskConical,
   },
   {
     href: "/analise",
-    label: "Análise de Logs",
-    description: "Analise server.log e configurações do Fluig para investigar problemas.",
+    label: "Logs e Configurações",
+    description: "Analise server.log e valide as configurações do Fluig para investigar problemas.",
     icon: FileSearch,
   },
   {
