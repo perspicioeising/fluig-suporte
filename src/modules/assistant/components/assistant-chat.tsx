@@ -5,7 +5,8 @@ import Link from "next/link";
 import { Loader2, MessageSquarePlus, Send, Square, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { deleteConversation } from "../actions";
-import type { ChatMessage, ConversationSummary, Source, StreamEvent } from "../types";
+import { useChatStream } from "../use-chat";
+import type { ChatMessage, ConversationSummary } from "../types";
 import { Markdown } from "./markdown";
 import { SourcesList } from "./sources-list";
 
@@ -15,8 +16,6 @@ const SUGGESTIONS = [
   "Quais APIs REST posso usar para trabalhar com formulários?",
   "Mostre um exemplo em JavaScript chamando a API pública para obter o usuário atual.",
 ];
-
-type UiMessage = ChatMessage & { pending?: boolean };
 
 export function AssistantChat({
   initialConversationId,
@@ -29,131 +28,32 @@ export function AssistantChat({
   initialConversations: ConversationSummary[];
   initialInput?: string;
 }) {
-  const [conversationId, setConversationId] = useState(initialConversationId);
   const [conversations, setConversations] = useState(initialConversations);
-  const [messages, setMessages] = useState<UiMessage[]>(initialMessages);
   const [input, setInput] = useState(initialInput);
-  const [streaming, setStreaming] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  const { messages, streaming, error, conversationId, send: streamSend, stop, reset } = useChatStream({
+    initialMessages,
+    initialConversationId,
+    onConversationCreated: (id, title) => {
+      setConversations((prev) => [{ id, title, updated_at: new Date().toISOString() }, ...prev]);
+      window.history.replaceState(null, "", `/assistente?c=${id}`);
+    },
+  });
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages]);
 
   function newConversation() {
-    abortRef.current?.abort();
-    setConversationId(null);
-    setMessages([]);
-    setError(null);
-    setStreaming(false);
+    reset();
     window.history.replaceState(null, "", "/assistente");
   }
 
   async function send(text: string) {
-    const question = text.trim();
-    if (!question || streaming) return;
-
-    setError(null);
+    if (!text.trim() || streaming) return;
     setInput("");
-    setStreaming(true);
-
-    const stamp = Date.now();
-    const assistantId = `tmp-assistant-${stamp}`;
-    const now = new Date().toISOString();
-    setMessages((prev) => [
-      ...prev,
-      { id: `tmp-user-${stamp}`, role: "user", content: question, citations: [], created_at: now },
-      { id: assistantId, role: "assistant", content: "", citations: [], created_at: now, pending: true },
-    ]);
-
-    const update = (patch: Partial<UiMessage>) =>
-      setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, ...patch } : m)));
-    const append = (chunk: string) =>
-      setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, content: m.content + chunk } : m)));
-    const dropPlaceholder = () => setMessages((prev) => prev.filter((m) => m.id !== assistantId));
-
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    try {
-      const res = await fetch("/api/assistant/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversationId: conversationId ?? undefined, message: question }),
-        signal: controller.signal,
-      });
-
-      const type = res.headers.get("content-type") ?? "";
-      if (res.redirected || (!res.ok && !type.includes("json"))) {
-        setError("Sessão expirada. Recarregue a página e entre novamente.");
-        dropPlaceholder();
-        return;
-      }
-      if (!res.ok || !res.body) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error ?? "Não foi possível obter a resposta.");
-        dropPlaceholder();
-        return;
-      }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let sources: Source[] = [];
-
-      const handle = (event: StreamEvent) => {
-        if (event.type === "meta") {
-          sources = event.sources;
-          update({ citations: event.sources });
-          if (!conversationId) {
-            setConversationId(event.conversationId);
-            setConversations((prev) => [
-              { id: event.conversationId, title: question.slice(0, 80), updated_at: new Date().toISOString() },
-              ...prev,
-            ]);
-            window.history.replaceState(null, "", `/assistente?c=${event.conversationId}`);
-          }
-        } else if (event.type === "delta") {
-          append(event.text);
-        } else if (event.type === "done") {
-          sources = event.sources;
-          update({ citations: sources, pending: false, id: event.messageId ?? assistantId });
-        } else if (event.type === "error") {
-          setError(event.message);
-          setMessages((prev) =>
-            prev.filter((m) => !(m.id === assistantId && m.content.trim() === "")).map((m) =>
-              m.id === assistantId ? { ...m, pending: false } : m,
-            ),
-          );
-        }
-      };
-
-      for (;;) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        let newline: number;
-        while ((newline = buffer.indexOf("\n")) >= 0) {
-          const line = buffer.slice(0, newline).trim();
-          buffer = buffer.slice(newline + 1);
-          if (line) handle(JSON.parse(line) as StreamEvent);
-        }
-      }
-      update({ pending: false });
-    } catch (e) {
-      if ((e as Error).name === "AbortError") {
-        update({ pending: false });
-      } else {
-        setError("Falha de comunicação com o servidor.");
-        dropPlaceholder();
-      }
-    } finally {
-      setStreaming(false);
-      abortRef.current = null;
-    }
+    await streamSend(text);
   }
 
   return (
@@ -289,7 +189,7 @@ export function AssistantChat({
             {streaming ? (
               <button
                 type="button"
-                onClick={() => abortRef.current?.abort()}
+                onClick={stop}
                 className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-surface-2"
               >
                 <Square className="size-4" aria-hidden />

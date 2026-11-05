@@ -138,7 +138,7 @@ O **Dashboard** é a tela inicial depois do login. Ele mostra:
 
 Use-o para navegar; as ações acontecem nos módulos.
 
-A barra lateral (ou a barra superior, em telas pequenas) dá acesso a qualquer módulo, e o botão **Sair** fica no canto superior direito.
+A barra lateral (ou a barra superior, em telas pequenas) dá acesso aos módulos principais: **Dashboard**, **APIs Fluig**, **Webservices SOAP**, **Histórico**, **Configurações** e **Ajuda**. No rodapé dela, a seção recolhível **Ferramentas avançadas** reúne **Construtor**, **API Tester**, **Assistente IA** e **Diagnóstico** — esses quatro também ficam embutidos no detalhe de cada API (em **APIs Fluig**), que é o lugar onde você vê, testa, gera código, pergunta ao assistente e diagnostica sem trocar de tela. O botão **Sair** fica no canto superior direito. No desktop dá para recolher a barra lateral (atalho **Ctrl/⌘ + B**).
 `,
   },
   {
@@ -168,13 +168,20 @@ O catálogo reúne entradas importadas da documentação oficial. Cada entrada m
 
 ### No detalhe da entrada — tudo no mesmo lugar
 
-O detalhe reúne três abas, sem precisar trocar de tela:
+O detalhe é dividido em duas colunas. À **esquerda**, a API em três abas; à **direita**, um painel de **assistência** que entende a API aberta.
+
+**Coluna da API (esquerda):**
 
 - **Documentação** — descrição, parâmetros de entrada e saída, exemplos e compatibilidade.
-- **Testar** (entradas REST) — o **API Tester embutido**: escolha o ambiente, preencha os parâmetros (os **obrigatórios** já aparecem listados, marcados com ‵*‵) e clique em **Executar**. A resposta aparece ali mesmo. Nas entradas do **REST antigo** o prefixo ‵/api/public‵ é aplicado automaticamente. Para recursos avançados (coleções, salvar requisições), há o link **Abrir o API Tester completo**.
+- **Testar** (entradas REST) — o **API Tester embutido**, com os mesmos recursos do Tester completo: seções de **Parâmetros de query**, **Headers** e **Corpo** (com tipo JSON/XML/texto/formulário), onde você pode adicionar itens à vontade. Os parâmetros **obrigatórios** da documentação já vêm listados e marcados com ‵*‵. Escolha o ambiente e clique em **Executar**; a resposta aparece ali mesmo. No **REST antigo** o prefixo ‵/api/public‵ é aplicado automaticamente. Para coleções e requisições salvas, use **Abrir o API Tester completo**.
 - **Código** — gera exemplos em cURL, JavaScript, Java, JSON e XML/SOAP a partir da entrada.
 
-Fora das abas: **Fonte oficial** abre a página de origem.
+**Painel de assistência (direita), recolhível:**
+
+- **Assistente** — chat já contextualizado na API aberta (sugestões como “Como uso este método?”). As respostas citam a documentação oficial.
+- **Diagnóstico** — analisa um erro. Se um teste na aba **Testar** falhar, aparece **Diagnosticar este erro**: o painel abre o Diagnóstico já com o resumo da resposta preenchido.
+
+Fora das colunas: **Fonte oficial** abre a página de origem.
 - Algumas entradas SOAP trazem uma **nota de compatibilidade** quando a própria documentação do TDN é inconsistente (por exemplo, nome da linha diferente do nome da assinatura). Nesses casos, confirme no WSDL do seu ambiente.
 - Entradas **depreciadas** são marcadas.
 `,

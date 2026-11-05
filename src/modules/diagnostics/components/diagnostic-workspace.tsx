@@ -1,27 +1,18 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Loader2, ShieldCheck, Square, Stethoscope, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Markdown } from "@/modules/assistant/components/markdown";
 import { SourcesList } from "@/modules/assistant/components/sources-list";
-import type { Source } from "@/modules/assistant/types";
 import { deleteDiagnostic } from "../actions";
-import { CATEGORY_LABELS, type Category, type Signal } from "../signals";
-import { CATEGORIES, type DiagnosticEvent, type DiagnosticRecord, type DiagnosticSummary, type HistoryOption } from "../types";
+import { useDiagnoseStream } from "../use-diagnose";
+import { CATEGORY_LABELS, type Category } from "../signals";
+import { CATEGORIES, type DiagnosticRecord, type DiagnosticSummary, type HistoryOption } from "../types";
 
 const fieldClass =
   "w-full rounded-md border border-border bg-surface-2 px-3 py-2 text-sm placeholder:text-muted";
-
-type Result = {
-  markdown: string;
-  signals: Signal[];
-  sources: Source[];
-  redactions: number;
-  attached: string[];
-  category?: string | null;
-};
 
 function describeHistory(h: HistoryOption) {
   const status = h.status_code ?? "sem resposta";
@@ -57,95 +48,24 @@ export function DiagnosticWorkspace({
   const [category, setCategory] = useState<(typeof CATEGORIES)[number]>("auto");
   const [environmentId, setEnvironmentId] = useState("");
   const [historyId, setHistoryId] = useState(initialHistoryId ?? "");
-  const [running, setRunning] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<Result | null>(
-    saved
-      ? { markdown: saved.markdown, signals: saved.signals, sources: saved.sources, redactions: saved.redactions, attached: [], category: saved.category }
-      : null,
-  );
-  const abortRef = useRef<AbortController | null>(null);
-  const viewingSaved = Boolean(saved) && !running;
 
-  async function run() {
-    if (running) return;
-    setError(null);
-    setRunning(true);
-    setResult({ markdown: "", signals: [], sources: [], redactions: 0, attached: [] });
+  const { running, error, result, run: runStream, stop } = useDiagnoseStream((id) => {
+    setDiagnostics((prev) => [
+      { id, category: null, created_at: new Date().toISOString(), preview: errorText.replace(/\s+/g, " ").slice(0, 90) },
+      ...prev,
+    ]);
+    window.history.replaceState(null, "", `/diagnostico?d=${id}`);
+  });
 
-    const controller = new AbortController();
-    abortRef.current = controller;
+  // Diagnóstico aberto a partir da lista (salvo): mostra o resultado gravado sem reexecutar.
+  const savedResult = saved
+    ? { markdown: saved.markdown, signals: saved.signals, sources: saved.sources, redactions: saved.redactions, attached: [], category: saved.category }
+    : null;
+  const shown = result ?? savedResult;
+  const viewingSaved = Boolean(saved) && !running && !result;
 
-    try {
-      const res = await fetch("/api/diagnostics/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          errorText,
-          category,
-          environmentId: environmentId || undefined,
-          historyId: historyId || undefined,
-        }),
-        signal: controller.signal,
-      });
-
-      const type = res.headers.get("content-type") ?? "";
-      if (res.redirected || (!res.ok && !type.includes("json"))) {
-        setError("Sessão expirada. Recarregue a página e entre novamente.");
-        setResult(null);
-        return;
-      }
-      if (!res.ok || !res.body) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error ?? "Não foi possível gerar o diagnóstico.");
-        setResult(null);
-        return;
-      }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      const handle = (event: DiagnosticEvent) => {
-        if (event.type === "meta") {
-          setResult((r) => ({ ...(r as Result), signals: event.signals, sources: event.sources, redactions: event.redactions, attached: event.attached, category: event.category }));
-        } else if (event.type === "delta") {
-          setResult((r) => ({ ...(r as Result), markdown: (r?.markdown ?? "") + event.text }));
-        } else if (event.type === "done") {
-          setResult((r) => ({ ...(r as Result), sources: event.sources }));
-          if (event.diagnosticId) {
-            const id = event.diagnosticId;
-            setDiagnostics((prev) => [
-              { id, category: null, created_at: new Date().toISOString(), preview: errorText.replace(/\s+/g, " ").slice(0, 90) },
-              ...prev,
-            ]);
-            window.history.replaceState(null, "", `/diagnostico?d=${id}`);
-          }
-        } else if (event.type === "error") {
-          setError(event.message);
-        }
-      };
-
-      for (;;) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        let nl: number;
-        while ((nl = buffer.indexOf("\n")) >= 0) {
-          const line = buffer.slice(0, nl).trim();
-          buffer = buffer.slice(nl + 1);
-          if (line) handle(JSON.parse(line) as DiagnosticEvent);
-        }
-      }
-    } catch (e) {
-      if ((e as Error).name !== "AbortError") {
-        setError("Falha de comunicação com o servidor.");
-        setResult((r) => (r && r.markdown ? r : null));
-      }
-    } finally {
-      setRunning(false);
-      abortRef.current = null;
-    }
+  function run() {
+    void runStream({ errorText, category, environmentId: environmentId || undefined, historyId: historyId || undefined });
   }
 
   return (
@@ -255,7 +175,7 @@ export function DiagnosticWorkspace({
 
           <div className="flex items-center gap-2">
             {running ? (
-              <button type="button" onClick={() => abortRef.current?.abort()} className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm hover:bg-surface-2">
+              <button type="button" onClick={stop} className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm hover:bg-surface-2">
                 <Square className="size-4" aria-hidden />
                 Parar
               </button>
@@ -284,34 +204,34 @@ export function DiagnosticWorkspace({
           </p>
         )}
 
-        {result && (
+        {shown && (
           <section aria-label="Resultado do diagnóstico" aria-live="polite" aria-busy={running} className="space-y-3 rounded-lg border border-border bg-surface p-4">
-            {(result.signals.length > 0 || result.redactions > 0 || result.attached.length > 0) && (
+            {(shown.signals.length > 0 || shown.redactions > 0 || shown.attached.length > 0) && (
               <div className="space-y-2 border-b border-border pb-3">
-                {result.signals.length > 0 && (
+                {shown.signals.length > 0 && (
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="text-xs text-muted">Sinais detectados:</span>
-                    {result.signals.map((s) => (
+                    {shown.signals.map((s) => (
                       <span key={s.id} className="rounded border border-border bg-surface-2 px-2 py-0.5 text-xs" title={s.evidence}>
                         {s.label}
                       </span>
                     ))}
                   </div>
                 )}
-                {result.attached.length > 0 && (
-                  <p className="text-xs text-muted">Evidências anexadas: {result.attached.join("; ")}.</p>
+                {shown.attached.length > 0 && (
+                  <p className="text-xs text-muted">Evidências anexadas: {shown.attached.join("; ")}.</p>
                 )}
-                {result.redactions > 0 && (
+                {shown.redactions > 0 && (
                   <p className="flex items-center gap-1.5 text-xs text-success">
                     <ShieldCheck className="size-3.5" aria-hidden />
-                    {result.redactions} valor{result.redactions > 1 ? "es" : ""} sensíve{result.redactions > 1 ? "is" : "l"} ocultado{result.redactions > 1 ? "s" : ""} antes da análise.
+                    {shown.redactions} valor{shown.redactions > 1 ? "es" : ""} sensíve{shown.redactions > 1 ? "is" : "l"} ocultado{shown.redactions > 1 ? "s" : ""} antes da análise.
                   </p>
                 )}
               </div>
             )}
 
-            {result.markdown ? (
-              <Markdown text={result.markdown} sources={result.sources} />
+            {shown.markdown ? (
+              <Markdown text={shown.markdown} sources={shown.sources} />
             ) : (
               <p className="flex items-center gap-2 text-sm text-muted">
                 <Loader2 className="size-4 animate-spin" aria-hidden />
@@ -319,7 +239,7 @@ export function DiagnosticWorkspace({
               </p>
             )}
 
-            {!running && <SourcesList sources={result.sources} />}
+            {!running && <SourcesList sources={shown.sources} />}
             <p className="text-xs text-muted">
               Este diagnóstico é um apoio à investigação e pode errar. Confirme as causas antes de alterar um ambiente.
             </p>

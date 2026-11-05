@@ -15,8 +15,11 @@ Contadores reais (ambientes, requisições salvas, WSDLs), últimas requisiçõe
 - Busca **ao digitar**, case-insensitive, vários termos (AND) via `ILIKE`. Filtros: tipo (`kind`), método HTTP, **assunto** e grupo (`tags`).
 - **Assunto** = classificação do **próprio Studio** (`catalog/topics.ts`), **não** da doc oficial. Em soap/sdk ignora `path` (é assinatura). Depende da migration 7 → degrada se faltar.
 - `queries.ts`: `searchEntries` (filtros + termos), `getFacets` (grupos distintos + flag de topics), `getEntry`.
-- **Detalhe unificado** (`catalog/components/entry-tabs.tsx`): hub com 3 abas — **Documentação** (server-rendered, passada como children), **Testar** (só REST; `tester/components/inline-tester.tsx`, executa na própria página) e **Código** (`builder/components/builder-panel.tsx` com `showCatalogLink={false}`). O cabeçalho (método/nome/caminho/fonte) fica acima das abas. O Construtor (`/construtor`) e o Tester (`/tester`) continuam como telas próprias.
-- Execução embutida e standalone compartilham `tester/use-execute.ts` (hook `useExecuteRequest`) e `ResponseView`/`KeyValueEditor`.
+- **Detalhe unificado em duas colunas** (`catalog/components/entry-tabs.tsx`): hub que centraliza ver/testar/código/chat/diagnóstico.
+  - Coluna esquerda: abas **Documentação** (server-rendered, passada como children), **Testar** (só REST; `tester/components/inline-tester.tsx`) e **Código** (`builder/components/builder-panel.tsx` com `showCatalogLink={false}`).
+  - Coluna direita (`catalog/components/entry-assist.tsx`, recolhível): abas **Assistente** (`assistant/components/inline-assistant.tsx`, sugestões contextualizadas na API) e **Diagnóstico** (`diagnostics/components/inline-diagnostics.tsx`). Um erro na aba Testar dispara `onDiagnose`, que abre o Diagnóstico com o resumo preenchido.
+  - O `InlineTester` tem paridade com o Tester completo (Query/Headers/Corpo sempre visíveis, com adicionar e tipo de corpo); os documentados vêm preenchidos. Coleções/salvar ficam só no `/tester`.
+- Lógica reutilizada por hooks: `tester/use-execute.ts` (`useExecuteRequest`), `assistant/use-chat.ts` (`useChatStream`), `diagnostics/use-diagnose.ts` (`useDiagnoseStream`) — compartilhados entre as versões embutidas e as telas `/tester`, `/assistente`, `/diagnostico` (todas mantidas; agora em "Ferramentas avançadas" na sidebar).
 
 ## Construtor (`/construtor`)
 

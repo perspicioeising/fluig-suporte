@@ -12,86 +12,80 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-export type NavGroup = "Explorar" | "Testar" | "Inteligência" | "Gestão" | "Suporte";
-
 export type NavItem = {
   href: string;
   label: string;
   description: string;
   icon: LucideIcon;
-  group: NavGroup;
+  /**
+   * true = ferramenta acessível também dentro do detalhe da API (catálogo).
+   * Na sidebar, esses itens ficam na seção recolhível "Ferramentas avançadas".
+   */
+  advanced?: boolean;
 };
-
-export const NAV_GROUPS: NavGroup[] = ["Explorar", "Testar", "Inteligência", "Gestão", "Suporte"];
 
 /** Fonte única dos módulos: usada na sidebar, no dashboard e nas páginas. */
 export const NAV_ITEMS: NavItem[] = [
   {
     href: "/dashboard",
-    group: "Explorar",
     label: "Dashboard",
     description: "Visão geral das integrações e atividades recentes.",
     icon: LayoutDashboard,
   },
   {
     href: "/catalogo",
-    group: "Explorar",
     label: "APIs Fluig",
     description: "Catálogo pesquisável de APIs REST, SOAP e SDK.",
     icon: BookOpen,
   },
   {
     href: "/construtor",
-    group: "Explorar",
+    advanced: true,
     label: "Construtor",
     description: "Gere exemplos de código a partir da documentação oficial.",
     icon: Wrench,
   },
   {
     href: "/tester",
-    group: "Testar",
+    advanced: true,
     label: "API Tester",
     description: "Execute e salve requisições contra ambientes Fluig.",
     icon: Send,
   },
   {
     href: "/soap",
-    group: "Testar",
     label: "Webservices SOAP",
     description: "Importe WSDL, monte envelopes e teste chamadas.",
     icon: FlaskConical,
   },
   {
     href: "/assistente",
-    group: "Inteligência",
+    advanced: true,
     label: "Assistente IA",
     description: "Pergunte sobre APIs com respostas baseadas na documentação.",
     icon: Sparkles,
   },
   {
     href: "/diagnostico",
-    group: "Inteligência",
+    advanced: true,
     label: "Diagnóstico",
     description: "Analise erros de integração e receba próximos passos.",
     icon: Bug,
   },
   {
     href: "/historico",
-    group: "Gestão",
     label: "Histórico",
     description: "Requisições, análises e diagnósticos anteriores.",
     icon: History,
   },
   {
     href: "/configuracoes",
-    group: "Gestão",
     label: "Configurações",
     description: "Ambientes Fluig, credenciais e preferências.",
     icon: Settings,
   },
   {
     href: "/ajuda",
-    group: "Suporte",
     label: "Ajuda",
     description: "Guia de uso, solução de problemas e glossário.",
     icon: LifeBuoy,
@@ -101,3 +95,12 @@ export const NAV_ITEMS: NavItem[] = [
 export function getNavItem(href: string) {
   return NAV_ITEMS.find((item) => item.href === href);
 }
+
+/** Itens primários (topo da sidebar). */
+export const PRIMARY_NAV_ITEMS = NAV_ITEMS.filter((item) => !item.advanced);
+
+/**
+ * Ferramentas avançadas (Construtor, API Tester, Assistente, Diagnóstico): já acessíveis
+ * dentro do detalhe da API no catálogo; aqui ficam numa seção recolhível no rodapé.
+ */
+export const ADVANCED_NAV_ITEMS = NAV_ITEMS.filter((item) => item.advanced);

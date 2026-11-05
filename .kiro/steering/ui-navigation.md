@@ -16,7 +16,8 @@ O `<main>` da área logada é **`@container/main`**. As páginas respondem à **
 
 ## Sidebar responsiva (`src/modules/navigation/`)
 
-- `nav-items.ts` — **fonte única** dos módulos, agrupados: `Explorar`, `Testar`, `Inteligência`, `Gestão`, `Suporte`. Usada na sidebar, no dashboard e no breadcrumb.
+- `nav-items.ts` — **fonte única** dos módulos (`NAV_ITEMS`), usada na sidebar, no dashboard e no breadcrumb. Itens marcados `advanced: true` (Construtor, API Tester, Assistente, Diagnóstico) também vivem dentro do detalhe da API; `PRIMARY_NAV_ITEMS` e `ADVANCED_NAV_ITEMS` derivam dessa lista.
+- A sidebar mostra os **primários** no topo (lista plana, sem subtítulos) e as **ferramentas avançadas** numa seção recolhível (`<details>`) no rodapé; o accordion já abre quando a rota ativa é uma delas. Recolhida (só ícones), os avançados aparecem direto após um separador.
 - `sidebar.tsx`:
   - **Desktop (`lg+`):** coluna fixa ao lado do conteúdo; expandida (15rem) ou recolhida (4rem, só ícones com dica no hover). A largura recolhida vem da variante CSS `sidebar-collapsed` (`@custom-variant` sobre `[data-sidebar="collapsed"]`), não de JS.
   - **Celular/tablet:** gaveta sobreposta com backdrop; trava a rolagem da página e o foco, devolve o foco ao fechar.

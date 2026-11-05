@@ -3,9 +3,9 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { PanelLeftClose, PanelLeftOpen, Plug, X } from "lucide-react";
+import { ChevronDown, PanelLeftClose, PanelLeftOpen, Plug, Wrench, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { NAV_GROUPS, NAV_ITEMS } from "../nav-items";
+import { ADVANCED_NAV_ITEMS, PRIMARY_NAV_ITEMS, type NavItem } from "../nav-items";
 import {
   DESKTOP_QUERY,
   applyCollapsedAttribute,
@@ -21,6 +21,46 @@ function isEditable(target: EventTarget | null) {
   return target instanceof HTMLElement && target.isContentEditable;
 }
 
+/** Item de navegação (link + indicador de ativo + dica quando a sidebar está recolhida). */
+function NavLink({ item, active, onNavigate }: { item: NavItem; active: boolean; onNavigate: () => void }) {
+  const Icon = item.icon;
+  return (
+    <li className="relative">
+      <Link
+        href={item.href}
+        aria-current={active ? "page" : undefined}
+        onClick={onNavigate}
+        className={cn(
+          "group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted transition-colors",
+          "hover:bg-surface-2 hover:text-foreground",
+          "lg:sidebar-collapsed:justify-center lg:sidebar-collapsed:px-0",
+          active && "bg-surface-2 font-medium text-foreground",
+        )}
+      >
+        <span
+          aria-hidden
+          className={cn(
+            "absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-accent transition-opacity",
+            active ? "opacity-100" : "opacity-0",
+          )}
+        />
+        <Icon className={cn("size-4.5 shrink-0", active && "text-accent")} aria-hidden />
+        <span className="truncate lg:sidebar-collapsed:sr-only">{item.label}</span>
+        <span
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute top-1/2 left-full z-50 ml-3 hidden -translate-y-1/2 rounded-md border border-border",
+            "bg-surface-2 px-2.5 py-1 text-xs whitespace-nowrap text-foreground shadow-lg",
+            "lg:sidebar-collapsed:group-hover:block lg:sidebar-collapsed:group-focus-visible:block",
+          )}
+        >
+          {item.label}
+        </span>
+      </Link>
+    </li>
+  );
+}
+
 /**
  * Navegação principal.
  * - Desktop (lg+): fixa ao lado do conteúdo; expandida (15rem) ou recolhida (4rem, só ícones com dica).
@@ -30,6 +70,10 @@ function isEditable(target: EventTarget | null) {
 export function Sidebar() {
   const pathname = usePathname();
   const { collapsed, mobileOpen } = useSidebarState();
+  // Accordion já abre se a rota atual for uma ferramenta avançada.
+  const advancedActive = ADVANCED_NAV_ITEMS.some(
+    (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
+  );
   const closeRef = useRef<HTMLButtonElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
@@ -125,62 +169,60 @@ export function Sidebar() {
           </button>
         </div>
 
-        {/* Itens */}
+        {/* Itens primários */}
         <nav
           aria-label="Principal"
-          className="flex-1 space-y-4 overflow-y-auto overscroll-contain px-3 py-4 lg:sidebar-collapsed:overflow-visible lg:sidebar-collapsed:px-2"
+          className="flex-1 overflow-y-auto overscroll-contain px-3 py-4 lg:sidebar-collapsed:overflow-visible lg:sidebar-collapsed:px-2"
         >
-          {NAV_GROUPS.map((group) => (
-            <div key={group} className="space-y-1">
-              <p className="px-3 text-[11px] font-medium tracking-wider text-muted/80 uppercase lg:sidebar-collapsed:sr-only">
-                {group}
-              </p>
-              <div aria-hidden className="mx-auto hidden h-px w-8 bg-border lg:sidebar-collapsed:block" />
-              <ul className="space-y-0.5">
-                {NAV_ITEMS.filter((item) => item.group === group).map(({ href, label, icon: Icon }) => {
-                  const active = pathname === href || pathname.startsWith(`${href}/`);
-                  return (
-                    <li key={href} className="relative">
-                      <Link
-                        href={href}
-                        aria-current={active ? "page" : undefined}
-                        onClick={() => setMobileOpen(false)}
-                        className={cn(
-                          "group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted transition-colors",
-                          "hover:bg-surface-2 hover:text-foreground",
-                          "lg:sidebar-collapsed:justify-center lg:sidebar-collapsed:px-0",
-                          active && "bg-surface-2 font-medium text-foreground",
-                        )}
-                      >
-                        {/* indicador do item ativo */}
-                        <span
-                          aria-hidden
-                          className={cn(
-                            "absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-accent transition-opacity",
-                            active ? "opacity-100" : "opacity-0",
-                          )}
-                        />
-                        <Icon className={cn("size-4.5 shrink-0", active && "text-accent")} aria-hidden />
-                        <span className="truncate lg:sidebar-collapsed:sr-only">{label}</span>
-                        {/* dica quando recolhida */}
-                        <span
-                          aria-hidden
-                          className={cn(
-                            "pointer-events-none absolute top-1/2 left-full z-50 ml-3 hidden -translate-y-1/2 rounded-md border border-border",
-                            "bg-surface-2 px-2.5 py-1 text-xs whitespace-nowrap text-foreground shadow-lg",
-                            "lg:sidebar-collapsed:group-hover:block lg:sidebar-collapsed:group-focus-visible:block",
-                          )}
-                        >
-                          {label}
-                        </span>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
+          <ul className="space-y-0.5">
+            {PRIMARY_NAV_ITEMS.map((item) => (
+              <NavLink
+                key={item.href}
+                item={item}
+                active={pathname === item.href || pathname.startsWith(`${item.href}/`)}
+                onNavigate={() => setMobileOpen(false)}
+              />
+            ))}
+          </ul>
         </nav>
+
+        {/* Ferramentas avançadas: também acessíveis dentro do catálogo. Seção recolhível no rodapé. */}
+        <div className="shrink-0 border-t border-border px-3 py-2 lg:sidebar-collapsed:px-2">
+          {/* Recolhida (só ícones): mostra um traço e os ícones direto, sem accordion. */}
+          <div aria-hidden className="mx-auto mb-1 hidden h-px w-8 bg-border lg:sidebar-collapsed:block" />
+          <ul className="hidden space-y-0.5 lg:sidebar-collapsed:block">
+            {ADVANCED_NAV_ITEMS.map((item) => (
+              <NavLink
+                key={item.href}
+                item={item}
+                active={pathname === item.href || pathname.startsWith(`${item.href}/`)}
+                onNavigate={() => setMobileOpen(false)}
+              />
+            ))}
+          </ul>
+
+          {/* Expandida/gaveta: accordion "Ferramentas avançadas" (aberto se a rota ativa é uma delas). */}
+          <details className="group/adv lg:sidebar-collapsed:hidden" open={advancedActive}>
+            <summary
+              className="flex cursor-pointer list-none items-center gap-3 rounded-md px-3 py-2 text-sm text-muted hover:bg-surface-2 hover:text-foreground"
+              title="Ferramentas avançadas"
+            >
+              <Wrench className="size-4.5 shrink-0" aria-hidden />
+              <span className="truncate">Ferramentas avançadas</span>
+              <ChevronDown className="ml-auto size-4 shrink-0 transition-transform group-open/adv:rotate-180" aria-hidden />
+            </summary>
+            <ul className="mt-0.5 space-y-0.5">
+              {ADVANCED_NAV_ITEMS.map((item) => (
+                <NavLink
+                  key={item.href}
+                  item={item}
+                  active={pathname === item.href || pathname.startsWith(`${item.href}/`)}
+                  onNavigate={() => setMobileOpen(false)}
+                />
+              ))}
+            </ul>
+          </details>
+        </div>
 
         {/* Recolher / expandir (desktop) */}
         <div className="hidden shrink-0 border-t border-border p-2 lg:block">
