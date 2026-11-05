@@ -8,6 +8,7 @@
  * --limit=N  (rest-old, sdk) processa só os N primeiros itens.
  * --dir=PATH (tdn) pasta com as páginas do TDN salvas manualmente.
  */
+import { appendFileSync } from "node:fs";
 import { backfillTopics, ensureSource, getAdminClient, persistDocuments, persistSource } from "./lib/db";
 import type { ParseResult } from "./lib/types";
 import { HELP_SOURCE, ingestHelp } from "./help";
@@ -36,6 +37,21 @@ function parseArgs(argv: string[]) {
     limit: args.has("limit") ? Number(args.get("limit")) : undefined,
     dir: args.get("dir") ?? "documentos",
   };
+}
+
+// Em alguns ambientes (Node sob MINGW64/Git Bash) o stdout quebra quando redirecionado
+// para arquivo/pipe ("stdout is not a tty"). Para auditar o resultado da gravação sem
+// depender do redirecionamento do shell, espelhamos as linhas-chave num arquivo.
+const AUDIT_LOG = process.env.INGEST_AUDIT_LOG;
+function report(line: string) {
+  console.log(line);
+  if (AUDIT_LOG) {
+    try {
+      appendFileSync(AUDIT_LOG, line + "\n");
+    } catch {
+      /* ignora falha de auditoria */
+    }
+  }
 }
 
 async function main() {
@@ -84,17 +100,17 @@ async function main() {
           entries,
           documents.map((d) => d.url),
         );
-        console.log(
-          `Gravado: ${stats.entries} entradas, ${stats.parameters} parâmetros, ` +
+        report(
+          `Gravado [${job.key}]: ${stats.entries} entradas, ${stats.parameters} parâmetros, ` +
             `${stats.documents} documentos, ${stats.chunks} trechos; ${stats.removedEntries} obsoletas removidas.`,
         );
       } else if (documents.length === 0) {
-        console.log("Nada a gravar (fonte preservada).");
+        report(`Nada a gravar [${job.key}] (fonte preservada).`);
       }
 
       if (documents.length > 0) {
         const stats = await persistDocuments(db, documents);
-        console.log(`Gravado (conceitual): ${stats.documents} documentos, ${stats.chunks} trechos.`);
+        report(`Gravado conceitual [${job.key}]: ${stats.documents} documentos, ${stats.chunks} trechos.`);
       }
     }
 
