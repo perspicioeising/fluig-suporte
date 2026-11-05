@@ -13,7 +13,7 @@ type Phase = "idle" | "reading" | "done" | "error";
  * Analisador de server.log. O arquivo é lido NO NAVEGADOR em streaming (nunca é enviado
  * ao servidor), então suporta arquivos muito grandes sem estourar memória.
  */
-export function LogAnalyzer() {
+export function LogAnalyzer({ onResult }: { onResult?: (r: AnalysisResult | null) => void } = {}) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [progress, setProgress] = useState<Progress>({ bytesRead: 0, total: 0 });
   const [result, setResult] = useState<AnalysisResult | null>(null);
@@ -35,6 +35,7 @@ export function LogAnalyzer() {
       const res = await analyzeLogFile(file, (p) => setProgress(p), controller.signal);
       setElapsed(performance.now() - t0);
       setResult(res);
+      onResult?.(res);
       setPhase("done");
     } catch (e) {
       if ((e as Error).name === "AbortError") {

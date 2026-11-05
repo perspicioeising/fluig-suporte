@@ -24,7 +24,9 @@ type Analyzed = { fileName: string; parsed: ParsedConfig; issues: ConfigIssue[] 
  * Validador de configurações do Fluig. Lê o arquivo no navegador (não envia a servidor),
  * mascara senhas e aplica as regras por versão/arquitetura informadas.
  */
-export function ConfigValidator() {
+export type ConfigAnalyzed = Analyzed;
+
+export function ConfigValidator({ onResults }: { onResults?: (list: Analyzed[]) => void } = {}) {
   const [files, setFiles] = useState<Analyzed[]>([]);
   const [fluigVersion, setFluigVersion] = useState("");
   const [ramGb, setRamGb] = useState("");
@@ -48,12 +50,20 @@ export function ConfigValidator() {
       const parsed = parseConfig(text, file.name);
       analyzed.push({ fileName: file.name, parsed, issues: validateConfig(parsed, ctx) });
     }
-    setFiles((prev) => [...prev, ...analyzed]);
+    setFiles((prev) => {
+      const next = [...prev, ...analyzed];
+      onResults?.(next);
+      return next;
+    });
   }
 
   // Revalida ao mudar versão/RAM (sem reler o arquivo).
   function revalidate(next: VersionContext) {
-    setFiles((prev) => prev.map((a) => ({ ...a, issues: validateConfig(a.parsed, next) })));
+    setFiles((prev) => {
+      const updated = prev.map((a) => ({ ...a, issues: validateConfig(a.parsed, next) }));
+      onResults?.(updated);
+      return updated;
+    });
   }
 
   return (
@@ -121,7 +131,14 @@ export function ConfigValidator() {
       {files.length > 0 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted">{files.length} arquivo(s) analisado(s)</p>
-          <button type="button" onClick={() => setFiles([])} className="text-xs text-accent hover:underline">
+          <button
+            type="button"
+            onClick={() => {
+              setFiles([]);
+              onResults?.([]);
+            }}
+            className="text-xs text-accent hover:underline"
+          >
             Limpar
           </button>
         </div>
