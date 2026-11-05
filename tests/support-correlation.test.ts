@@ -4,6 +4,7 @@ import { parseConfig } from "@/modules/support/config-parser";
 import { validateConfig } from "@/modules/support/config-validation";
 import { correlate } from "@/modules/support/correlation";
 import { buildEvidenceText, hasEvidence } from "@/modules/support/evidence";
+import { buildReport } from "@/modules/support/report";
 import { KNOWN_ISSUES, type IssueFinding } from "@/modules/support/known-issues";
 import type { AnalysisResult } from "@/modules/support/stream-reader";
 
@@ -112,5 +113,42 @@ describe("pacote de evidências", () => {
   test("texto vazio quando não há nada", () => {
     const text = buildEvidenceText({ logAnalysis: null, configs: [], correlations: [] });
     assert.equal(text.trim(), "");
+  });
+});
+
+describe("relatório técnico", () => {
+  const config = parseConfig(STANDALONE, "standalone.xml");
+  const now = new Date(Date.UTC(2026, 6, 9, 12, 0, 0));
+
+  test("monta relatório com evidências e diagnóstico", () => {
+    const logResult = fakeLog(["db-connection-lost"]);
+    const configs = [{ fileName: "standalone.xml", parsed: config, issues: [] }];
+    const correlations = correlate(logResult.findings, [config], []);
+    const md = buildReport({
+      pkg: { logAnalysis: logResult, configs, correlations },
+      diagnosisMarkdown: "## Resumo do problema\nFalha de conexão com o banco.",
+      diagnosisSources: [{ index: 1, title: "Perda de conexão", url: "https://x", kind: "docs", entryId: null, snippet: "", cited: true }],
+      now,
+    });
+    assert.match(md, /# Relatório técnico/);
+    assert.match(md, /## Ambiente/);
+    assert.match(md, /Falha\/perda de conex/);
+    assert.match(md, /## Configuração: standalone\.xml/);
+    assert.match(md, /## Correlações/);
+    assert.match(md, /## Diagnóstico assistido por IA/);
+    assert.match(md, /### Fontes consultadas/);
+    assert.match(md, /\[1\] Perda de conexão — https:\/\/x/);
+    assert.match(md, /não contém o log bruto/);
+  });
+
+  test("funciona sem diagnóstico de IA (só evidências)", () => {
+    const md = buildReport({
+      pkg: { logAnalysis: fakeLog(["db-connection-lost"]), configs: [], correlations: [] },
+      diagnosisMarkdown: null,
+      diagnosisSources: [],
+      now,
+    });
+    assert.match(md, /# Relatório técnico/);
+    assert.ok(!md.includes("## Diagnóstico assistido por IA"));
   });
 });

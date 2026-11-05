@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Loader2, ShieldCheck, Square, Stethoscope } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { Check, Copy, FileText, Loader2, ShieldCheck, Square, Stethoscope } from "lucide-react";
 import { Markdown } from "@/modules/assistant/components/markdown";
 import { SourcesList } from "@/modules/assistant/components/sources-list";
 import { useDiagnoseStream } from "@/modules/diagnostics/use-diagnose";
@@ -10,6 +10,7 @@ import type { ParsedConfig } from "../config-parser";
 import type { ConfigIssue } from "../config-validation";
 import { correlate } from "../correlation";
 import { buildEvidenceText, hasEvidence } from "../evidence";
+import { buildReport } from "../report";
 
 type ConfigAnalyzed = { fileName: string; parsed: ParsedConfig; issues: ConfigIssue[] };
 
@@ -149,6 +150,77 @@ export function SupportDiagnosis({
           </div>
         )}
       </section>
+
+      {/* Relatório técnico para copiar (disponível assim que há evidências) */}
+      {evidenceReady && !running && (
+        <ReportCard
+          markdown={buildReport({
+            pkg,
+            diagnosisMarkdown: result?.markdown ?? null,
+            diagnosisSources: result?.sources ?? [],
+          })}
+        />
+      )}
     </div>
+  );
+}
+
+function ReportCard({ markdown }: { markdown: string }) {
+  const [copied, setCopied] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  async function copy() {
+    let done = false;
+    try {
+      await navigator.clipboard.writeText(markdown);
+      done = true;
+    } catch {
+      // Fallback: seleciona o textarea e usa execCommand (navegadores sem permissão de clipboard).
+      const el = textareaRef.current;
+      if (el) {
+        el.focus();
+        el.select();
+        try {
+          done = document.execCommand("copy");
+        } catch {
+          done = false;
+        }
+      }
+    }
+    if (done) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }
+  }
+
+  return (
+    <section aria-label="Relatório técnico" className="space-y-3 rounded-lg border border-border bg-surface p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="flex items-center gap-2 text-sm font-medium">
+          <FileText className="size-4 text-accent" aria-hidden />
+          Relatório técnico
+        </h2>
+        <button
+          type="button"
+          onClick={() => void copy()}
+          className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface-2"
+        >
+          {copied ? <Check className="size-4 text-success" aria-hidden /> : <Copy className="size-4" aria-hidden />}
+          {copied ? "Copiado" : "Copiar"}
+        </button>
+      </div>
+      <p className="text-xs text-muted">
+        Resumo pronto para colar no atendimento: ambiente, achados do log, configurações, correlações e o diagnóstico.
+        Sem log bruto nem credenciais.
+      </p>
+      <textarea
+        ref={textareaRef}
+        readOnly
+        value={markdown}
+        rows={16}
+        onFocus={(e) => e.currentTarget.select()}
+        className="w-full resize-y rounded-md border border-border bg-surface-2 p-3 font-mono text-xs"
+      />
+    </section>
   );
 }
