@@ -285,16 +285,22 @@ export function ingestTdnLocal(dir: string): ParseResult {
   for (const file of files) {
     const $ = cheerio.load(readFileSync(join(dir, file), "utf8"));
     const pageId = $('meta[name="ajs-page-id"]').attr("content");
-    const config = pageId ? PAGES[pageId] : undefined;
 
     if (!pageId || !$("#main-content").length) {
       console.log(`  (ignorado) ${file}: não é uma página do TDN.`);
       continue;
     }
-    if (!config) {
-      warnings.push(`${file}: pageId ${pageId} sem configuração, ignorado.`);
-      continue;
-    }
+
+    // Páginas conhecidas usam a config cadastrada (slug estável, SOAP, índices).
+    // Qualquer outra página do TDN é ingerida como documentação genérica, sem cadastro manual:
+    // slug/nome/URL vêm do próprio HTML. Assim dá para baixar o TDN em massa e importar direto.
+    const canonical = $('link[rel="canonical"]').attr("href") ?? `https://tdn.totvs.com/pages/viewpage.action?pageId=${pageId}`;
+    const genericTitle = squash($("title").text()).replace(/\s*-\s*TOTVS Fluig\s*-\s*TDN$/i, "") || `TDN ${pageId}`;
+    const config: PageConfig =
+      PAGES[pageId] ?? {
+        kind: "docs",
+        source: { slug: `tdn-${pageId}`, name: `TDN - ${genericTitle}`.slice(0, 160), kind: "docs", url: canonical },
+      };
 
     const pageUrl = $('link[rel="canonical"]').attr("href") ?? config.source.url;
     const pageTitle = squash($("title").text()).replace(/\s*-\s*TOTVS Fluig\s*-\s*TDN$/i, "");
