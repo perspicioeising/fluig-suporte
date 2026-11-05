@@ -1,6 +1,7 @@
 import {
   BookOpen,
   Bug,
+  FileSearch,
   FlaskConical,
   History,
   LayoutDashboard,
@@ -57,6 +58,12 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Webservices SOAP",
     description: "Importe WSDL, monte envelopes e teste chamadas.",
     icon: FlaskConical,
+  },
+  {
+    href: "/analise",
+    label: "Análise de Logs",
+    description: "Analise server.log e configurações do Fluig para investigar problemas.",
+    icon: FileSearch,
   },
   {
     href: "/assistente",
