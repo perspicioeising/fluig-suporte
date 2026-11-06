@@ -1,6 +1,10 @@
 @import "tailwindcss";
 
-/* Tema escuro de ferramenta técnica (inspirado em Postman / VS Code) */
+/*
+ * Tema de ferramenta técnica (inspirado em Postman / VS Code).
+ * Escuro é o padrão; claro em <html data-theme="light">. Um script inline no <head>
+ * marca data-theme antes da primeira pintura, então não há "flash" ao carregar.
+ */
 :root {
   --background: #0f1115;
   --surface: #161a21;
@@ -13,6 +17,20 @@
   --success: #3ecf8e;
   --danger: #f04b4b;
   color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --background: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #eef0f4;
+  --border: #d5dae2;
+  --foreground: #1b1f27;
+  --muted: #5c6473;
+  --accent: #e2561d;
+  --accent-foreground: #ffffff;
+  --success: #15935f;
+  --danger: #d23434;
+  color-scheme: light;
 }
 
 @theme inline {

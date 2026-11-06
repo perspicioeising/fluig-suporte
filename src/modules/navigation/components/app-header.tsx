@@ -7,6 +7,7 @@ import { logout } from "@/modules/auth/actions";
 import { NAV_ITEMS } from "../nav-items";
 import { toggleMobileOpen, useSidebarState } from "../sidebar-store";
 import { SIDEBAR_ID } from "./sidebar";
+import { ThemeToggle } from "./theme-toggle";
 
 /** Título da página atual, com "migalha" para subpáginas (ex.: APIs Fluig › Detalhe). */
 function PageTitle() {
@@ -54,6 +55,7 @@ export function AppHeader({ email }: { email: string }) {
       <PageTitle />
 
       <div className="ml-auto flex items-center gap-2">
+        <ThemeToggle />
         <span
           aria-hidden
           className="grid size-8 shrink-0 place-items-center rounded-full bg-accent/15 text-xs font-semibold text-accent"

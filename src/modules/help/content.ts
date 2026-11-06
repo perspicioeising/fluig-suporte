@@ -139,7 +139,7 @@ O **Dashboard** é a tela inicial depois do login. Ele mostra:
 
 Use-o para navegar; as ações acontecem nos módulos.
 
-A barra lateral (ou a barra superior, em telas pequenas) dá acesso aos módulos principais: **Dashboard**, **APIs Fluig**, **Webservices SOAP**, **Histórico**, **Configurações** e **Ajuda**. No rodapé dela, a seção recolhível **Ferramentas avançadas** reúne **Construtor**, **API Tester**, **Assistente IA** e **Diagnóstico** — esses quatro também ficam embutidos no detalhe de cada API (em **APIs Fluig**), que é o lugar onde você vê, testa, gera código, pergunta ao assistente e diagnostica sem trocar de tela. O botão **Sair** fica no canto superior direito. No desktop dá para recolher a barra lateral (atalho **Ctrl/⌘ + B**).
+A barra lateral (ou a barra superior, em telas pequenas) dá acesso aos módulos principais: **Dashboard**, **APIs Fluig**, **Webservices SOAP**, **Histórico**, **Configurações** e **Ajuda**. No rodapé dela, a seção recolhível **Ferramentas avançadas** reúne **Construtor**, **API Tester**, **Assistente IA** e **Diagnóstico** — esses quatro também ficam embutidos no detalhe de cada API (em **APIs Fluig**), que é o lugar onde você vê, testa, gera código, pergunta ao assistente e diagnostica sem trocar de tela. O botão **Sair** fica no canto superior direito. No desktop dá para recolher a barra lateral (atalho **Ctrl/⌘ + B**). No cabeçalho também há o botão de **tema claro/escuro** (ícone de sol/lua); a escolha fica salva no navegador e, na primeira visita, segue a preferência do seu sistema.
 `,
   },
   {
