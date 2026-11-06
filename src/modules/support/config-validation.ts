@@ -126,7 +126,7 @@ export function validateConfig(config: ParsedConfig, ctx: VersionContext = { flu
         severity: "alta",
         title: `Datasource "${label}" sem connection-url`,
         detail: "O datasource não tem URL de conexão definida.",
-        kbQuery: "configuração do banco de dados",
+        kbQuery: "configuração do banco de dados SQL Server Oracle",
       });
     }
     if (ds.maxPoolSize != null && ds.maxPoolSize < 10 && ds.jndi.includes("Fluig")) {
@@ -135,7 +135,7 @@ export function validateConfig(config: ParsedConfig, ctx: VersionContext = { flu
         severity: "media",
         title: `Pool pequeno no datasource "${label}"`,
         detail: `max-pool-size = ${ds.maxPoolSize}. Em produção, um pool muito pequeno pode causar espera por conexão sob carga.`,
-        kbQuery: "configuração do banco de dados",
+        kbQuery: "configuração do banco de dados SQL Server Oracle",
       });
     }
     if (ds.minPoolSize != null && ds.maxPoolSize != null && ds.minPoolSize > ds.maxPoolSize) {

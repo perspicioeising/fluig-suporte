@@ -39,15 +39,33 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     id: "db-connection-lost",
     title: "Falha/perda de conexão com o banco de dados",
     severity: "alta",
-    pattern: /Communications link failure|Connection (?:refused|reset|timed out|is not available)|Could not (?:open|get) .*connection|CannotGetJdbcConnection|No operations allowed after connection closed|ORA-\d|SQLState/i,
+    // Só padrões de CONEXÃO. Erros de SQL (constraint, sintaxe) são tratados à parte:
+    // "SQLState" e "ORA-" genéricos saíram daqui para não classificar erro de dado como conexão.
+    pattern: /Communications link failure|Connection (?:refused|reset|timed out|is not available)|Could not (?:open|get) .*connection|CannotGetJdbcConnection|No operations allowed after connection closed|connection pool|ORA-12(?:17|70|05)|The connection is closed/i,
     hint: "Há indícios de falha ao conectar ao banco. Verifique a disponibilidade do banco, a connection-url e o pool do datasource.",
     reference: "https://centraldeatendimento.totvs.com/hc/pt-br/articles/27663436384663",
-    kbQuery: "configuração do banco de dados",
+    kbQuery: "configuração do banco de dados SQL Server Oracle",
     checks: [
       "Confirme que o serviço do banco está no ar e aceitando conexões (do próprio servidor do Fluig, não só da sua máquina).",
       "Teste a conectividade do servidor do Fluig até o host/porta do banco (telnet/Test-NetConnection).",
       "Confira a connection-url, o usuário e a senha do datasource no standalone.xml (ou domain.xml).",
       "Verifique o max-pool-size do datasource: sob carga, um pool pequeno gera espera por conexão.",
+    ],
+  },
+  {
+    id: "db-constraint-violation",
+    title: "Violação de constraint no banco (chave duplicada/integridade)",
+    severity: "media",
+    // SQL Server 2627/2601 = UNIQUE/PK duplicada; 547 = foreign key; SQLState 23000 = integridade;
+    // ORA-00001 = unique Oracle; Postgres "duplicate key".
+    pattern: /SQL Error: 26(?:27|01)|SQL Error: 547|SQLState: 23000|ORA-00001|duplicate key value|Violation of (?:UNIQUE|PRIMARY) KEY|ConstraintViolationException|DataIntegrityViolation/i,
+    hint: "O banco rejeitou uma gravação por violar uma restrição (chave única/primária duplicada ou integridade referencial). Em geral é a aplicação/customização tentando inserir um registro que já existe, não um problema do banco em si.",
+    kbQuery: "desenvolvimento de datasets",
+    checks: [
+      "Veja na linha do log qual tabela/constraint foi violada (a mensagem costuma trazer o nome).",
+      "Identifique a operação que disparou a gravação: evento, dataset, processo ou integração.",
+      "Verifique se há reprocessamento/duplicidade de chamada (a mesma ação rodando duas vezes).",
+      "Se vier de customização, revise a lógica que monta a chave antes de inserir.",
     ],
   },
   {

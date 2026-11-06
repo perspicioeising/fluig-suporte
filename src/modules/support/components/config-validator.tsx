@@ -27,8 +27,15 @@ type Analyzed = { fileName: string; parsed: ParsedConfig; issues: ConfigIssue[] 
  */
 export type ConfigAnalyzed = Analyzed;
 
-export function ConfigValidator({ onResults }: { onResults?: (list: Analyzed[]) => void } = {}) {
-  const [files, setFiles] = useState<Analyzed[]>([]);
+export function ConfigValidator({
+  onResults,
+  initialFiles = [],
+}: {
+  onResults?: (list: Analyzed[]) => void;
+  /** Configs restauradas (sessionStorage) para reexibir ao voltar à tela. */
+  initialFiles?: Analyzed[];
+} = {}) {
+  const [files, setFiles] = useState<Analyzed[]>(initialFiles);
   const [fluigVersion, setFluigVersion] = useState("");
   const [ramGb, setRamGb] = useState("");
   const [error, setError] = useState<string | null>(null);

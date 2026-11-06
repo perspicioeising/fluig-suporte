@@ -41,6 +41,7 @@ O **Fluig Integration Studio** é uma ferramenta para desenvolvedores e analista
 | **Webservices SOAP** | Importa WSDLs, mostra serviços e operações, monta envelopes e testa chamadas SOAP. |
 | **Assistente IA** | Responde perguntas com base na documentação oficial importada, citando as fontes. |
 | **Diagnóstico** | Analisa um erro de integração e sugere causas, validações e próximos passos. |
+| **Análise** | Investiga o server.log e os arquivos de configuração: indisponibilidade/reinícios, problemas conhecidos, lentidão, busca e diagnóstico com IA. |
 | **Histórico** | Todas as execuções REST e SOAP do workspace, com filtros, detalhe, reabertura no API Tester e exclusão dos seus registros. |
 | **Configurações** | Cadastro dos ambientes Fluig e das credenciais. |
 
@@ -374,6 +375,40 @@ Acima do resultado aparecem os **sinais detectados** automaticamente (por exempl
 ### Limites
 
 Até **20.000 caracteres** por diagnóstico, **5 por minuto** e **100 por dia** por usuário. Os diagnósticos ficam salvos na lista à esquerda e podem ser excluídos.
+`,
+  },
+  {
+    id: "analise",
+    group: "Módulos",
+    title: "Análise de logs e configurações",
+    summary: "Investigar o server.log e os arquivos de configuração do Fluig: indisponibilidade, problemas conhecidos, lentidão e diagnóstico.",
+    body: md`
+A tela **Análise** reúne, em três abas, a investigação de um atendimento: **Logs** (server.log), **Configurações** (standalone.xml, domain.xml, host.xml, standalone.conf) e **Diagnóstico** (correlação dos dois + IA).
+
+> **O arquivo nunca sai do seu navegador.** O server.log é lido **em streaming, localmente**, então suporta arquivos grandes (vários GB) sem enviar nada a servidor. Só um resumo agregado (sem o log bruto e com segredos ocultos) pode ser enviado ao diagnóstico com IA, quando você pede.
+
+### Aba Logs
+
+Arraste o **server.log** ou selecione o arquivo. O app processa e mostra:
+
+- **Resumo:** tamanho, total de eventos, período coberto e contagem por nível (ERROR, WARN, INFO...).
+- **Disponibilidade e reinícios:** detecta cada vez que o serviço **reiniciou** (pelo marco de subida "up and running" / WildFly started). Para cada reinício informa o horário, o tempo fora do ar (quando há uma parada registrada antes) e a causa provável: **precedido por OutOfMemory**, **precedido por erro FATAL**, **parada registrada antes** (possível manutenção) ou **sem parada limpa antes** (possível queda abrupta). Vários reinícios em janela curta são sinalizados como **possível crash loop**. É o caminho para investigar **indisponibilidade** — a detecção é pelo reinício em si, não por silêncio no log.
+- **Buscar nos erros e avisos:** campo de busca por texto (sem diferenciar maiúsculas) na mensagem e no stack trace dos eventos de erro/aviso, com filtro por nível e o termo destacado. Útil para achar um erro específico (ex.: ‵mail‵, ‵timeout‵, o nome de um dataset).
+- **Problemas conhecidos:** padrões reconhecidos (falha de conexão com o banco, violação de constraint, falta de memória, timeout de serviço externo, erro em evento customizado, personificação negada, entre outros). Cada um traz a severidade, a contagem, um trecho de exemplo, **Como investigar** (passos objetivos) e, quando a base de conhecimento tem a página correspondente, **Solução na documentação oficial** com link direto.
+- **Operações lentas (JSChronos):** operações que o Fluig registrou como demoradas, da mais lenta para a menos, com os passos de investigação de lentidão.
+- **Linha do tempo** e **erros/avisos agrupados** (ocorrências equivalentes juntas, da mais frequente para a menos).
+
+### Aba Configurações
+
+Envie os arquivos de configuração (processados **no navegador**, senhas mascaradas). O app mostra JVM (-Xms/-Xmx/Metaspace), datasources e os **achados da validação** (memória acima da RAM, pool invertido, logger suprimido...), cada achado também com a página oficial correspondente quando existe. Informe a **versão do Fluig** e a **RAM da máquina** para checagens adicionais.
+
+### Aba Diagnóstico
+
+Reúne os achados do log e das configurações, mostra as **correlações** (ex.: falha de banco no log × datasource na config) e permite rodar o **Diagnóstico com IA** sobre esse pacote de evidências — que cita a página oficial que sustenta cada causa. Ao final, um **Relatório técnico** pronto para copiar (ambiente, achados, correlações e o diagnóstico), sem log bruto nem credenciais.
+
+### A análise fica guardada enquanto a aba está aberta
+
+O resultado é salvo no **armazenamento da sessão do navegador**: se você navegar para outra tela e voltar, a análise continua lá. Ela **não** é enviada a servidor nem persiste depois que você fecha a aba (os dados de log são sensíveis). Use **Limpar análise** para descartar antes disso.
 `,
   },
   {

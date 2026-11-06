@@ -24,21 +24,52 @@ type SearchRow = {
 /** Conteúdo curto tende a ser página-índice/navegação; preferimos trechos substanciais. */
 const MIN_SUBSTANTIAL_CHARS = 200;
 
+const STOPWORDS = new Set(["de", "do", "da", "dos", "das", "e", "ou", "o", "a", "os", "as", "em", "no", "na", "com", "para", "por"]);
+
+/** Palavras significativas da query (minúsculas, sem stopwords/acentos irrelevantes). */
+function keywords(q: string): string[] {
+  return q
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length > 2 && !STOPWORDS.has(w));
+}
+
+/** Quantas palavras da query aparecem no título do resultado (0..n). */
+function titleScore(title: string | null, kws: string[]): number {
+  if (!title) return 0;
+  const t = title.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return kws.filter((w) => t.includes(w)).length;
+}
+
 async function bestMatch(
   rpc: (query: string) => Promise<SearchRow[]>,
   query: string,
 ): Promise<Omit<IssueSolution, "issueId"> | null> {
   const rows = (await rpc(query)).filter((r) => r.source_url && r.source_title);
   if (rows.length === 0) return null;
-  // Entre os melhores resultados, prefere o primeiro com conteúdo substancial (evita
-  // páginas-índice de poucas linhas que o full-text às vezes traz no topo). Se todos
-  // forem curtos, fica com o de maior relevância (o primeiro).
-  const top = rows.find((r) => r.content.trim().length >= MIN_SUBSTANTIAL_CHARS) ?? rows[0];
-  if (!top.source_url) return null;
+
+  const kws = keywords(query);
+  // Preferimos a página cujo TÍTULO casa melhor com a query (um "Configuração do banco de
+  // dados SQL Server" deve vencer um "Instalação da plataforma" que só é denso em termos).
+  // Entre títulos empatados, mantém a ordem de relevância da RPC. Despriorizamos trechos curtos.
+  let best = rows[0];
+  let bestScore = -1;
+  rows.forEach((r, i) => {
+    const substantial = r.content.trim().length >= MIN_SUBSTANTIAL_CHARS ? 1 : 0;
+    // peso forte no título, desempate por posição (quanto menor i, melhor) e por conteúdo.
+    const score = titleScore(r.source_title, kws) * 10 + substantial - i * 0.1;
+    if (score > bestScore) {
+      bestScore = score;
+      best = r;
+    }
+  });
+  if (!best.source_url) return null;
   return {
-    title: (top.source_title ?? "Documentação oficial").slice(0, 160),
-    url: top.source_url,
-    snippet: top.content.replace(/\s+/g, " ").trim().slice(0, SNIPPET_CHARS),
+    title: (best.source_title ?? "Documentação oficial").slice(0, 160),
+    url: best.source_url,
+    snippet: best.content.replace(/\s+/g, " ").trim().slice(0, SNIPPET_CHARS),
   };
 }
 

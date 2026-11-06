@@ -13,10 +13,17 @@ type Phase = "idle" | "reading" | "done" | "error";
  * Analisador de server.log. O arquivo é lido NO NAVEGADOR em streaming (nunca é enviado
  * ao servidor), então suporta arquivos muito grandes sem estourar memória.
  */
-export function LogAnalyzer({ onResult }: { onResult?: (r: AnalysisResult | null) => void } = {}) {
-  const [phase, setPhase] = useState<Phase>("idle");
+export function LogAnalyzer({
+  onResult,
+  initialResult = null,
+}: {
+  onResult?: (r: AnalysisResult | null) => void;
+  /** Resultado restaurado (sessionStorage) para reexibir ao voltar à tela. */
+  initialResult?: AnalysisResult | null;
+} = {}) {
+  const [phase, setPhase] = useState<Phase>(initialResult ? "done" : "idle");
   const [progress, setProgress] = useState<Progress>({ bytesRead: 0, total: 0 });
-  const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [result, setResult] = useState<AnalysisResult | null>(initialResult);
   const [error, setError] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -132,7 +139,7 @@ export function LogAnalyzer({ onResult }: { onResult?: (r: AnalysisResult | null
       {phase === "done" && result && (
         <>
           <p className="text-xs text-muted">
-            Analisado em {(elapsed / 1000).toFixed(1)}s.{" "}
+            {elapsed > 0 ? `Analisado em ${(elapsed / 1000).toFixed(1)}s. ` : "Análise anterior restaurada. "}
             <button type="button" onClick={() => inputRef.current?.click()} className="text-accent hover:underline">
               Analisar outro arquivo
             </button>
