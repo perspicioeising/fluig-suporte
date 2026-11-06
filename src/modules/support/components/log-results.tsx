@@ -1,9 +1,10 @@
 "use client";
 
-import { Activity, Clock, Gauge, Info, ListTree, Power, Server } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Activity, Clock, Gauge, Info, ListTree, Power, Search, Server } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AnalysisResult } from "../stream-reader";
-import type { LogLevel } from "../log-parser";
+import type { LogEvent, LogLevel } from "../log-parser";
 import type { Restart } from "../log-analysis";
 import type { Severity } from "../known-issues";
 import { SLOW_CHECKS, SLOW_SOLUTION_ID } from "../solutions-types";
@@ -64,6 +65,123 @@ function Timeline({ result }: { result: AnalysisResult }) {
       </div>
     </Card>
   );
+}
+
+type LevelFilter = "todos" | "ERROR" | "WARN" | "FATAL";
+const MAX_SEARCH_RESULTS = 200;
+
+/**
+ * Busca por texto nos eventos de erro/aviso retidos (até os primeiros 5000). Cobre o caso
+ * comum de "achar o erro que contém X" (ex.: "mail"). Não varre linhas INFO/DEBUG nem o
+ * arquivo inteiro — esses não ficam em memória (o log é lido em streaming).
+ */
+function LogSearch({ events, truncated }: { events: LogEvent[]; truncated: boolean }) {
+  const [term, setTerm] = useState("");
+  const [level, setLevel] = useState<LevelFilter>("todos");
+
+  const query = term.trim().toLowerCase();
+  const matches = useMemo(() => {
+    if (query.length < 2) return [];
+    const out: LogEvent[] = [];
+    for (const e of events) {
+      if (level !== "todos" && e.level !== level) continue;
+      const haystack = (e.detail ? `${e.message}\n${e.detail}` : e.message).toLowerCase();
+      if (haystack.includes(query)) out.push(e);
+      if (out.length >= MAX_SEARCH_RESULTS) break;
+    }
+    return out;
+  }, [events, query, level]);
+
+  return (
+    <Card title="Buscar nos erros e avisos" icon={Search}>
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          type="search"
+          value={term}
+          onChange={(e) => setTerm(e.target.value)}
+          placeholder="ex.: mail, timeout, ds_PRD003, NullPointer…"
+          className="min-w-0 flex-1 rounded-md border border-border bg-surface-2 px-3 py-2 text-sm placeholder:text-muted"
+          aria-label="Termo de busca nos erros e avisos"
+        />
+        <select
+          value={level}
+          onChange={(e) => setLevel(e.target.value as LevelFilter)}
+          className="rounded-md border border-border bg-surface-2 px-2 py-2 text-sm"
+          aria-label="Filtrar por nível"
+        >
+          <option value="todos">Todos os níveis</option>
+          <option value="ERROR">ERROR</option>
+          <option value="WARN">WARN</option>
+          <option value="FATAL">FATAL</option>
+        </select>
+      </div>
+
+      <p className="text-xs text-muted">
+        Busca por texto (sem diferenciar maiúsculas) na mensagem e no stack trace dos eventos de erro/aviso.
+        {truncated && " O arquivo tem muitos erros; a busca cobre os primeiros retidos para exibição."}
+      </p>
+
+      {query.length >= 2 && (
+        <>
+          <p className="text-sm">
+            {matches.length === 0 ? (
+              <span className="text-muted">Nenhum erro/aviso contém &ldquo;{term.trim()}&rdquo;.</span>
+            ) : (
+              <span>
+                <strong className="tabular-nums">{matches.length}</strong>
+                {matches.length === MAX_SEARCH_RESULTS ? "+ " : " "}
+                ocorrência(s) com &ldquo;{term.trim()}&rdquo;.
+              </span>
+            )}
+          </p>
+          {matches.length > 0 && (
+            <ul className="divide-y divide-border">
+              {matches.map((e, i) => (
+                <li key={`${e.line}-${i}`} className="py-2">
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <span className={cn("font-mono font-semibold", LEVEL_STYLE[e.level])}>{e.level}</span>
+                    <span className="text-muted">{formatLogTime(e.epochMs)}</span>
+                    <span className="text-muted">· linha {e.line}</span>
+                    {e.category && <span className="font-mono text-muted/70">{e.category}</span>}
+                  </div>
+                  <p className="mt-1 text-sm break-all">{highlight(e.message, term.trim())}</p>
+                  {e.detail && (
+                    <details className="mt-0.5">
+                      <summary className="cursor-pointer text-xs text-accent">Ver stack trace</summary>
+                      <pre className="mt-1 overflow-x-auto rounded bg-surface-2 p-2 text-[11px] whitespace-pre-wrap">{e.detail}</pre>
+                    </details>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </Card>
+  );
+}
+
+/** Destaca as ocorrências do termo no texto (case-insensitive), sem usar dangerouslySetInnerHTML. */
+function highlight(text: string, term: string): React.ReactNode {
+  if (!term) return text;
+  const parts: React.ReactNode[] = [];
+  const lower = text.toLowerCase();
+  const needle = term.toLowerCase();
+  let from = 0;
+  let idx = lower.indexOf(needle, from);
+  let key = 0;
+  while (idx !== -1) {
+    if (idx > from) parts.push(text.slice(from, idx));
+    parts.push(
+      <mark key={key++} className="rounded bg-accent/30 px-0.5 text-foreground">
+        {text.slice(idx, idx + needle.length)}
+      </mark>,
+    );
+    from = idx + needle.length;
+    idx = lower.indexOf(needle, from);
+  }
+  if (from < text.length) parts.push(text.slice(from));
+  return parts;
 }
 
 const RESTART_CAUSE: Record<NonNullable<Restart["precededByCrashSignal"]>, string> = {
@@ -172,6 +290,9 @@ export function LogResults({ result }: { result: AnalysisResult }) {
 
       {/* Disponibilidade e reinícios (chave para investigar indisponibilidade) */}
       <AvailabilityCard result={result} />
+
+      {/* Busca livre nos erros/avisos retidos */}
+      <LogSearch events={result.keptErrorEvents} truncated={result.truncatedEvents} />
 
       {/* Ambiente (BootStrap) */}
       {summary.environment.length > 0 && (
