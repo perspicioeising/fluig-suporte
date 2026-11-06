@@ -210,7 +210,7 @@ export const KNOWN_ISSUES: KnownIssue[] = [
  * catálogo porque a severidade depende do tempo (N) — extraímos o maior tempo observado.
  */
 const SLOW_RE = /(?:JSChronos].*?)?([\w.$]+)\s+executou por\s+(\d+)\s+segundos/i;
-const SLOW_WARN_SECONDS = 10; // acima disso já é lento o bastante para anotar
+const SLOW_WARN_SECONDS = 30; // só consideramos lento a partir de 30s (piso de atenção)
 const SLOW_HIGH_SECONDS = 60; // acima de 1 min: severidade alta
 
 export type SlowOperation = {

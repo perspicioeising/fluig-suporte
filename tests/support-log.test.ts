@@ -215,19 +215,28 @@ describe("lentidão (JSChronos)", () => {
     const acc = createIssueAccumulator();
     for (const e of events) acc.feed(e);
     const slow = acc.slowOperations();
-    assert.equal(slow.length, 1); // "algo.rapido" (3s) fica de fora (< 10s)
+    assert.equal(slow.length, 1); // "algo.rapido" (3s) fica de fora (< 30s)
     assert.equal(slow[0].name, "DatasetFactory.getDataset.ds_lento");
     assert.equal(slow[0].maxSeconds, 211);
     assert.equal(slow[0].count, 2);
     assert.equal(slow[0].severity, "alta"); // > 60s
   });
 
-  test("severidade média entre 10s e 60s", () => {
+  test("severidade média entre 30s e 60s", () => {
     const { events } = parseLog(
-      "2026-07-09 08:00:00,000 WARN  [JSChronos] (t) consulta.media executou por 25 segundos",
+      "2026-07-09 08:00:00,000 WARN  [JSChronos] (t) consulta.media executou por 45 segundos",
     );
     const acc = createIssueAccumulator();
     for (const e of events) acc.feed(e);
     assert.equal(acc.slowOperations()[0].severity, "media");
+  });
+
+  test("operação abaixo de 30s não é considerada lenta", () => {
+    const { events } = parseLog(
+      "2026-07-09 08:00:00,000 WARN  [JSChronos] (t) quase.lento executou por 25 segundos",
+    );
+    const acc = createIssueAccumulator();
+    for (const e of events) acc.feed(e);
+    assert.equal(acc.slowOperations().length, 0);
   });
 });

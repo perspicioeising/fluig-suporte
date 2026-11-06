@@ -363,8 +363,8 @@ export function LogResults({ result }: { result: AnalysisResult }) {
       {result.slowOperations.length > 0 && (
         <Card title={`Operações lentas (${result.slowOperations.length})`} icon={Clock}>
           <p className="text-xs text-muted">
-            O monitor do Fluig (JSChronos) registrou operações que demoraram a executar. Tempos altos indicam
-            gargalo (ex.: dataset/consulta pesada, serviço externo lento).
+            O monitor do Fluig (JSChronos) registrou operações que demoraram a executar — listamos as que passaram de
+            30 segundos. Tempos altos indicam gargalo (ex.: dataset/consulta pesada, serviço externo lento).
           </p>
           <ul className="divide-y divide-border">
             {result.slowOperations.slice(0, 30).map((op) => (
