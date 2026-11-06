@@ -80,12 +80,6 @@ export const NAV_ITEMS: NavItem[] = [
     description: "Analise erros de integração e receba próximos passos.",
     icon: Bug,
   },
-  // {
-  //   href: "/historico",
-  //   label: "Histórico",
-  //   description: "Requisições, análises e diagnósticos anteriores.",
-  //   icon: History,
-  // },
   {
     href: "/configuracoes",
     label: "Configurações",
