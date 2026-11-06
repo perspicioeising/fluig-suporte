@@ -44,12 +44,28 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     pattern: /Communications link failure|Connection (?:refused|reset|timed out|is not available)|Could not (?:open|get) .*connection|CannotGetJdbcConnection|No operations allowed after connection closed|connection pool|ORA-12(?:17|70|05)|The connection is closed/i,
     hint: "Há indícios de falha ao conectar ao banco. Verifique a disponibilidade do banco, a connection-url e o pool do datasource.",
     reference: "https://centraldeatendimento.totvs.com/hc/pt-br/articles/27663436384663",
-    kbQuery: "configuração do banco de dados SQL Server Oracle",
+    kbQuery: "could not open connection pool de conexões",
     checks: [
       "Confirme que o serviço do banco está no ar e aceitando conexões (do próprio servidor do Fluig, não só da sua máquina).",
       "Teste a conectividade do servidor do Fluig até o host/porta do banco (telnet/Test-NetConnection).",
       "Confira a connection-url, o usuário e a senha do datasource no standalone.xml (ou domain.xml).",
       "Verifique o max-pool-size do datasource: sob carga, um pool pequeno gera espera por conexão.",
+    ],
+  },
+  {
+    id: "db-runtimedata-duplicate",
+    title: "Chave duplicada na FLUIG_RUNTIMEDATA (geralmente inofensivo)",
+    severity: "baixa",
+    // Caso específico: violação de PK na tabela de cache FLUIG_RUNTIMEDATA. Segundo a Central
+    // de Atendimento, é regra de negócio (fila assíncrona de cache) e NÃO afeta o produto.
+    pattern: /FLUIG_RUNTIMEDATA/i,
+    hint: "A FLUIG_RUNTIMEDATA é uma tabela de cache (alertas, traduções, início e atualizações) alimentada por uma fila de execução assíncrona. Sob uso intenso em curtos intervalos, surgem mensagens de chave duplicada no log do banco — por ser regra de negócio, geralmente NÃO afetam o desempenho nem o funcionamento do produto. Trate como ruído a menos que haja impacto funcional concreto. (Orientação do time de suporte Fluig.)",
+    checks: [
+      "Confirme se há impacto funcional real (algo deixou de funcionar) ou se são apenas mensagens acumuladas no log do banco.",
+      "Para limpar registros antigos, realize um truncate na tabela FLUIG_RUNTIMEDATA.",
+      "Verifique se o parâmetro \"Is Read Committed Snapshot On\" está ativado na configuração do banco (SQL Server).",
+      "Revise customizações que usam os usuários fluigds/fluigdsro.",
+      "Reavalie o tamanho do pool de conexões (ver o artigo \"Could not open connection\" na Central de Atendimento).",
     ],
   },
   {
@@ -165,7 +181,7 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     severity: "alta",
     pattern: /Connect to [\d.]+:\d+.*(?:Connection timed out|failed)|HttpHostConnectException/i,
     hint: "Falha de comunicação com um serviço externo cadastrado no Fluig. Verifique se o serviço está disponível e se o servidor do Fluig alcança o endereço/porta (teste via Postman/SoapUI no próprio servidor).",
-    kbQuery: "integração com aplicativos externos",
+    kbQuery: "timeout serviço externo conexão",
     checks: [
       "Identifique no log o endereço/porta do serviço que deu timeout (a mensagem costuma trazer o IP:porta).",
       "Do próprio servidor do Fluig, teste o alcance até esse endereço/porta (não da sua estação).",
@@ -262,11 +278,27 @@ export function detectKnownIssues(events: LogEvent[]): IssueFinding[] {
     }
   }
 
-  const rank: Record<Severity, number> = { alta: 0, media: 1, baixa: 2 };
-  return [...found.values()].sort((a, b) => rank[a.issue.severity] - rank[b.issue.severity] || b.count - a.count);
+  return finalizeFindings([...found.values()]);
 }
 
 const SEVERITY_RANK: Record<Severity, number> = { alta: 0, media: 1, baixa: 2 };
+
+/**
+ * Pós-processa os achados: suprime duplicatas quando um problema mais específico cobre o
+ * mesmo evento de um genérico, e ordena por severidade e frequência.
+ */
+function finalizeFindings(findings: IssueFinding[]): IssueFinding[] {
+  const ids = new Set(findings.map((f) => f.issue.id));
+  // A violação de constraint na FLUIG_RUNTIMEDATA (regra de negócio) substitui o
+  // alerta genérico de violação de constraint, para não mostrar os dois para o mesmo erro.
+  const filtered =
+    ids.has("db-runtimedata-duplicate")
+      ? findings.filter((f) => f.issue.id !== "db-constraint-violation")
+      : findings;
+  return filtered.sort(
+    (a, b) => SEVERITY_RANK[a.issue.severity] - SEVERITY_RANK[b.issue.severity] || b.count - a.count,
+  );
+}
 
 /**
  * Versão incremental de detectKnownIssues: para streaming de arquivos grandes, alimente
@@ -318,9 +350,7 @@ export function createIssueAccumulator() {
       }
     },
     result(): IssueFinding[] {
-      return [...found.values()].sort(
-        (a, b) => SEVERITY_RANK[a.issue.severity] - SEVERITY_RANK[b.issue.severity] || b.count - a.count,
-      );
+      return finalizeFindings([...found.values()]);
     },
     /** Operações lentas observadas, da mais lenta para a menos. */
     slowOperations(): SlowOperation[] {

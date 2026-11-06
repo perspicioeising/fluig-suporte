@@ -51,15 +51,16 @@ async function bestMatch(
   if (rows.length === 0) return null;
 
   const kws = keywords(query);
-  // Preferimos a página cujo TÍTULO casa melhor com a query (um "Configuração do banco de
-  // dados SQL Server" deve vencer um "Instalação da plataforma" que só é denso em termos).
-  // Entre títulos empatados, mantém a ordem de relevância da RPC. Despriorizamos trechos curtos.
+  // Pontuação: TÍTULO que casa com a query pesa mais (um "Configuração do banco de dados SQL
+  // Server" vence um "Instalação da plataforma" só denso em termos). Artigos da Central de
+  // Atendimento ganham um pequeno bônus — tendem a ser soluções diretas de suporte. Desempate
+  // por posição da RPC e por conteúdo substancial (evita páginas-índice curtas).
   let best = rows[0];
   let bestScore = -1;
   rows.forEach((r, i) => {
     const substantial = r.content.trim().length >= MIN_SUBSTANTIAL_CHARS ? 1 : 0;
-    // peso forte no título, desempate por posição (quanto menor i, melhor) e por conteúdo.
-    const score = titleScore(r.source_title, kws) * 10 + substantial - i * 0.1;
+    const isCentral = (r.source_url ?? "").includes("centraldeatendimento.totvs.com") ? 1 : 0;
+    const score = titleScore(r.source_title, kws) * 10 + isCentral * 1 + substantial - i * 0.1;
     if (score > bestScore) {
       bestScore = score;
       best = r;

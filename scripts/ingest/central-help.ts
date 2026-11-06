@@ -10,6 +10,7 @@
  */
 
 import * as cheerio from "cheerio";
+import type { AnyNode } from "domhandler";
 import type { ParsedDocument, ParseResult, SourceDefinition } from "./lib/types";
 import { squash } from "./lib/signature";
 
@@ -58,10 +59,20 @@ function htmlToText(html: string): string {
   const $ = cheerio.load(html);
   const lines: string[] = [];
 
-  const walkBlock = (el: cheerio.Element) => {
+  const tagOf = (el: AnyNode): string | null =>
+    el.type === "tag" ? (el as { tagName: string }).tagName.toLowerCase() : null;
+
+  const walkBlock = (el: AnyNode) => {
+    const tag = tagOf(el);
+    if (!tag) {
+      // nó de texto solto no topo
+      if (el.type === "text") {
+        const t = squash((el as { data?: string }).data);
+        if (t) lines.push(t);
+      }
+      return;
+    }
     const $el = $(el);
-    const tag = el.tagName?.toLowerCase();
-    if (!tag) return;
     if (tag === "pre" || tag === "code") {
       const code = $el.text().replace(/\u00a0/g, " ").trimEnd();
       if (code.trim()) lines.push("```", code, "```");
@@ -91,10 +102,9 @@ function htmlToText(html: string): string {
   };
 
   // Percorre os blocos de nível superior; se não houver, usa o texto todo.
-  const root = $("body").length ? $("body") : $.root();
-  const blocks = root.children().toArray();
+  const blocks = $.root().children().toArray();
   if (blocks.length > 0) {
-    for (const el of blocks) walkBlock(el as cheerio.Element);
+    for (const el of blocks) walkBlock(el);
   } else {
     const t = squash($.root().text());
     if (t) lines.push(t);

@@ -619,10 +619,11 @@ O conteúdo vem exclusivamente de fontes oficiais:
 - **api.fluig.com/latest:** Swagger de cada API REST nova publicada.
 - **api.fluig.com/old:** páginas de recursos do REST antigo.
 - **api.fluig.com/old/sdk:** Javadoc do SDK (serviços e a classe ‵FluigAPI‵).
-- **TDN (TOTVS):** documentação dos Web Services SOAP e páginas conceituais (API pública e OAuth, consumo de serviços e SDK, utilização de Web Services, autorização de clients REST e o índice de integrações).
+- **TDN (TOTVS):** documentação dos Web Services SOAP e páginas da plataforma (desenvolvimento, eventos, datasets, integração, configuração, instalação, segurança, logs e mais).
+- **Central de Atendimento TOTVS:** artigos públicos de suporte do Fluig (soluções de problemas comuns, mensagens de erro, procedimentos). É a fonte priorizada ao sugerir a solução de um problema detectado na análise de logs.
 - **Este guia:** descreve o uso do próprio aplicativo.
 
-O TDN bloqueia acesso automatizado; por isso as páginas dele são **salvas manualmente** e importadas de arquivo.
+O TDN bloqueia acesso automatizado; por isso as páginas dele são **salvas manualmente** e importadas de arquivo. A Central de Atendimento é importada automaticamente pela API pública do seu Help Center.
 
 Cada entrada guarda o **link da fonte**. Se algo parecer divergente da sua versão do Fluig, confirme no **WSDL** ou no **Swagger do seu ambiente**, que refletem a versão exata instalada.
 `,
@@ -670,6 +671,7 @@ npm run ingest -- --source=rest-new   # api.fluig.com/latest
 npm run ingest -- --source=rest-old   # api.fluig.com/old
 npm run ingest -- --source=sdk        # Javadoc do SDK
 npm run ingest -- --source=tdn        # páginas do TDN salvas em documentos/
+npm run ingest -- --source=central    # artigos públicos da Central de Atendimento (API Zendesk)
 npm run ingest -- --source=help       # este guia
 npm run ingest -- --source=all --dry-run   # simula, sem gravar
 ‵‵‵

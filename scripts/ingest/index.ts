@@ -9,6 +9,7 @@
  * --dir=PATH (tdn) pasta com as páginas do TDN salvas manualmente.
  */
 import { appendFileSync } from "node:fs";
+import { ingestCentralHelp } from "./central-help";
 import { backfillTopics, ensureSource, getAdminClient, persistDocuments, persistSource } from "./lib/db";
 import type { ParseResult } from "./lib/types";
 import { HELP_SOURCE, ingestHelp } from "./help";
@@ -63,6 +64,7 @@ async function main() {
     { key: "sdk", label: "SDK (Javadoc em api.fluig.com/old/sdk)", sourceSlug: SDK_SOURCE.slug, run: () => ingestSdk(limit) },
     { key: "help", label: "Guia de uso do aplicativo (src/modules/help)", sourceSlug: HELP_SOURCE.slug, run: async () => ingestHelp() },
     { key: "tdn", label: `SOAP e documentação conceitual (TDN salvo em ${dir})`, sourceSlug: SOAP_SOURCE_SLUG, run: async () => ingestTdnLocal(dir) },
+    { key: "central", label: "Central de Atendimento TOTVS (artigos públicos do Fluig)", sourceSlug: "", run: () => ingestCentralHelp(limit) },
   ];
 
   if (source === "topics") {
