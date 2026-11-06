@@ -44,6 +44,27 @@ export type TimelineBucket = {
   warns: number;
 };
 
+/** Um reinício (start) do servidor detectado no log, com o contexto que o antecede. */
+export type Restart = {
+  /** Momento do start detectado. */
+  epochMs: number;
+  line: number;
+  /** Como o start foi reconhecido ("up and running" do Fluig ou WildFly "started"). */
+  via: "fluig-bootstrap" | "wildfly-started";
+  /** Shutdown/parada detectado imediatamente antes, se houver (limpo = restart planejado). */
+  precededByShutdown: boolean;
+  /** Houve OOM ou FATAL nos segundos anteriores ao start (indício de crash). */
+  precededByCrashSignal: "oom" | "fatal" | null;
+  /** Tempo de indisponibilidade estimado (ms) entre a parada e este start, se mensurável. */
+  downtimeMs: number | null;
+};
+
+export type AvailabilityAnalysis = {
+  restarts: Restart[];
+  /** true quando há vários reinícios em janela curta (instabilidade/crash loop). */
+  crashLoop: boolean;
+};
+
 export type LogSummary = {
   totalEvents: number;
   counts: Record<LogLevel, number>;
@@ -55,6 +76,8 @@ export type LogSummary = {
   errorGroups: ErrorGroup[];
   timeline: TimelineBucket[];
   bucketMs: number;
+  /** Reinícios do servidor e indisponibilidade inferida a partir deles. */
+  availability: AvailabilityAnalysis;
 };
 
 const EXCEPTION_RE = /\b([a-zA-Z_][\w.]*\.(?:[A-Z]\w*)?(?:Exception|Error))\b/;
@@ -92,6 +115,94 @@ export function extractEnvironment(events: LogEvent[]): EnvInfo[] {
     label,
     value: found.get(key)!,
   }));
+}
+
+// Marcadores de disponibilidade do servidor (WildFly/JBoss + Fluig).
+// "up and running": o Fluig terminou de subir e está atendendo (marcador definitivo).
+const UP_AND_RUNNING_RE = /up and running|is up and running|fluig .*(?:iniciad|dispon[íi]vel)|plataforma .*(?:iniciad|no ar)/i;
+// WildFly terminou de subir ("started in N ms"): serviço de aplicação pronto.
+const WILDFLY_STARTED_RE = /WFLYSRV0025|started in \d+ms|started \(with errors\) in \d+ms/i;
+// Parada do servidor (shutdown limpo = manutenção; sem isso antes de um start = possível crash).
+const SHUTDOWN_RE = /WFLYSRV0050|stopped in \d+ms|Shutdown|shutting down|JBAS015950|Undeploying/i;
+
+/** Janela (ms) para considerar reinícios próximos como instabilidade/crash loop. */
+const CRASH_LOOP_WINDOW_MS = 30 * 60_000;
+/** A partir de quantos reinícios na janela consideramos crash loop. */
+const CRASH_LOOP_MIN = 3;
+
+/**
+ * Detecta reinícios do servidor e infere a indisponibilidade a partir deles — NÃO a partir
+ * de silêncio no log (o Fluig reinicia rápido e volta a escrever logo). O sinal confiável é
+ * o próprio ciclo parada/subida: medimos o tempo até o "up and running" e sinalizamos quando
+ * há vários reinícios em janela curta (crash loop).
+ */
+export function analyzeAvailability(events: LogEvent[]): AvailabilityAnalysis {
+  // Momentos-chave em ordem cronológica.
+  let lastShutdownMs: number | null = null;
+  let lastShutdownIdx = -1;
+  let lastOomMs: number | null = null;
+  let lastFatalMs: number | null = null;
+  // Evita contar o mesmo ciclo de subida várias vezes (bootstrap + starting + started juntos).
+  let lastRestartMs: number | null = null;
+
+  const restarts: Restart[] = [];
+
+  // Conta reinícios pelo marco de CONCLUSÃO da subida ("up and running" / WildFly started):
+  // é quando o serviço volta a atender. O BootStrap/starting só marca o começo e aparece em
+  // todo boot (inclusive o primeiro, normal), então não é usado como gatilho de reinício.
+  const isUp = (e: LogEvent) => UP_AND_RUNNING_RE.test(e.message) || WILDFLY_STARTED_RE.test(e.message);
+  const via = (e: LogEvent): Restart["via"] =>
+    UP_AND_RUNNING_RE.test(e.message) ? "fluig-bootstrap" : "wildfly-started";
+
+  for (const e of events) {
+    // sinais de crash que podem explicar um reinício logo em seguida
+    if (/OutOfMemoryError|Java heap space|Metaspace|GC overhead limit exceeded/i.test(e.message)) lastOomMs = e.epochMs;
+    if (e.level === "FATAL") lastFatalMs = e.epochMs;
+    if (SHUTDOWN_RE.test(e.message)) {
+      lastShutdownMs = e.epochMs;
+      lastShutdownIdx = restarts.length;
+    }
+
+    if (!isUp(e)) continue;
+
+    // Agrupa marcos próximos do MESMO ciclo (ex.: "started in" seguido de "up and running") num reinício só.
+    if (lastRestartMs !== null && e.epochMs - lastRestartMs < 2 * 60_000) continue;
+
+    const crashSignal: Restart["precededByCrashSignal"] =
+      lastOomMs !== null && e.epochMs - lastOomMs < 5 * 60_000
+        ? "oom"
+        : lastFatalMs !== null && e.epochMs - lastFatalMs < 5 * 60_000
+          ? "fatal"
+          : null;
+
+    const precededByShutdown = lastShutdownMs !== null && e.epochMs - lastShutdownMs < 10 * 60_000;
+    const downtimeMs = precededByShutdown && lastShutdownMs !== null ? e.epochMs - lastShutdownMs : null;
+
+    restarts.push({
+      epochMs: e.epochMs,
+      line: e.line,
+      via: via(e),
+      precededByShutdown,
+      precededByCrashSignal: crashSignal,
+      downtimeMs,
+    });
+    lastRestartMs = e.epochMs;
+    // consome o shutdown já associado
+    if (lastShutdownIdx >= 0) lastShutdownMs = null;
+  }
+
+  // Crash loop: CRASH_LOOP_MIN+ reinícios dentro de uma janela deslizante curta.
+  let crashLoop = false;
+  for (let i = 0; i < restarts.length; i++) {
+    const windowEnd = restarts[i].epochMs + CRASH_LOOP_WINDOW_MS;
+    const inWindow = restarts.filter((r) => r.epochMs >= restarts[i].epochMs && r.epochMs <= windowEnd).length;
+    if (inWindow >= CRASH_LOOP_MIN) {
+      crashLoop = true;
+      break;
+    }
+  }
+
+  return { restarts, crashLoop };
 }
 
 /** Escolhe uma janela de tempo (bucket) para ~120 pontos na timeline. */
@@ -169,5 +280,6 @@ export function analyzeEvents(events: LogEvent[]): LogSummary {
     errorGroups,
     timeline,
     bucketMs,
+    availability: analyzeAvailability(events),
   };
 }

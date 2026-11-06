@@ -43,6 +43,26 @@ export function buildEvidenceText(pkg: EvidencePackage, maxErrorGroups = 8): str
         `ERROR: ${s.counts.ERROR}, WARN: ${s.counts.WARN}, FATAL: ${s.counts.FATAL}.`,
     );
 
+    const av = pkg.logAnalysis.summary.availability;
+    if (av.restarts.length > 0) {
+      parts.push("### Reinícios do servidor (indisponibilidade)");
+      const lines = av.restarts.slice(0, 12).map((r) => {
+        const when = formatLogTime(r.epochMs);
+        const downtime = r.downtimeMs != null ? `, fora por ~${Math.round(r.downtimeMs / 1000)}s` : "";
+        const cause =
+          r.precededByCrashSignal === "oom"
+            ? ", precedido por OutOfMemory"
+            : r.precededByCrashSignal === "fatal"
+              ? ", precedido por erro FATAL"
+              : r.precededByShutdown
+                ? ", com parada registrada antes (possível manutenção)"
+                : ", sem parada limpa antes (possível queda abrupta)";
+        return `- ${when} (linha ${r.line})${downtime}${cause}`;
+      });
+      if (av.crashLoop) lines.unshift("- ATENÇÃO: vários reinícios em janela curta (possível crash loop / instabilidade grave).");
+      parts.push(lines.join("\n"));
+    }
+
     if (pkg.logAnalysis.findings.length > 0) {
       parts.push("### Problemas conhecidos detectados no log");
       parts.push(
@@ -110,7 +130,8 @@ export function hasEvidence(pkg: EvidencePackage): boolean {
     (pkg.logAnalysis.findings.length > 0 ||
       pkg.logAnalysis.summary.counts.ERROR > 0 ||
       pkg.logAnalysis.summary.errorGroups.length > 0 ||
-      pkg.logAnalysis.slowOperations.length > 0);
+      pkg.logAnalysis.slowOperations.length > 0 ||
+      pkg.logAnalysis.summary.availability.restarts.length > 0);
   const configHas = pkg.configs.some((c) => c.issues.length > 0);
   return logHas || configHas || pkg.correlations.length > 0;
 }

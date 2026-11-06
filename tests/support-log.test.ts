@@ -1,7 +1,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { ChunkedLogParser, parseLog } from "@/modules/support/log-parser";
-import { analyzeEvents, signatureOf, extractEnvironment } from "@/modules/support/log-analysis";
+import { analyzeEvents, analyzeAvailability, signatureOf, extractEnvironment } from "@/modules/support/log-analysis";
 import { detectKnownIssues, createIssueAccumulator } from "@/modules/support/known-issues";
 
 const SAMPLE = [
@@ -99,6 +99,56 @@ describe("análise", () => {
     assert.equal(summary.lastEpochMs, Date.UTC(2026, 6, 9, 8, 14, 0, 0));
     const totalErrors = summary.timeline.reduce((n, b) => n + b.errors, 0);
     assert.equal(totalErrors, 2);
+  });
+});
+
+describe("disponibilidade e reinícios", () => {
+  test("detecta reinício com parada limpa antes e mede o downtime", () => {
+    const SAMPLE_RESTART = [
+      "2026-07-09 03:00:00,000 INFO  [org.jboss.as] (MSC service thread) WFLYSRV0050: WildFly stopped in 1200ms",
+      "2026-07-09 03:02:30,000 INFO  [org.jboss.as.server] (Controller Boot Thread) WFLYSRV0025: WildFly started in 90000ms",
+      "2026-07-09 03:02:31,000 INFO  [com.fluig.BootStrap] (ServerService) Fluig is up and running",
+    ].join("\n");
+    const { events } = parseLog(SAMPLE_RESTART);
+    const av = analyzeAvailability(events);
+    assert.equal(av.restarts.length, 1); // marcos próximos do mesmo ciclo contam como 1
+    const r = av.restarts[0];
+    assert.equal(r.precededByShutdown, true);
+    assert.equal(r.precededByCrashSignal, null);
+    // 03:00:00 -> 03:02:30 = 150s
+    assert.equal(r.downtimeMs, 150_000);
+    assert.equal(av.crashLoop, false);
+  });
+
+  test("marca queda abrupta (sem shutdown) precedida de OutOfMemory", () => {
+    const SAMPLE_OOM = [
+      "2026-07-09 10:00:00,000 ERROR [com.foo] (task) java.lang.OutOfMemoryError: Java heap space",
+      "2026-07-09 10:01:00,000 INFO  [org.jboss.as.server] (Controller Boot Thread) WFLYSRV0025: WildFly started in 60000ms",
+    ].join("\n");
+    const { events } = parseLog(SAMPLE_OOM);
+    const av = analyzeAvailability(events);
+    assert.equal(av.restarts.length, 1);
+    assert.equal(av.restarts[0].precededByShutdown, false);
+    assert.equal(av.restarts[0].precededByCrashSignal, "oom");
+  });
+
+  test("identifica crash loop (vários reinícios em janela curta)", () => {
+    const lines: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      const mm = String(i * 5).padStart(2, "0"); // 11:00, 11:05, 11:10
+      lines.push(`2026-07-09 11:${mm}:00,000 INFO  [org.jboss.as.server] (Controller Boot Thread) WFLYSRV0025: WildFly started in 60000ms`);
+    }
+    const { events } = parseLog(lines.join("\n"));
+    const av = analyzeAvailability(events);
+    assert.equal(av.restarts.length, 3);
+    assert.equal(av.crashLoop, true);
+  });
+
+  test("log estável (sem reinício) não gera reinícios", () => {
+    const { events } = parseLog(SAMPLE);
+    const av = analyzeAvailability(events);
+    assert.equal(av.restarts.length, 0);
+    assert.equal(av.crashLoop, false);
   });
 });
 

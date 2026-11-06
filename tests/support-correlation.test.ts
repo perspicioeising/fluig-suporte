@@ -34,6 +34,7 @@ function fakeLog(findingIds: string[]): AnalysisResult {
       ],
       timeline: [],
       bucketMs: 60000,
+      availability: { restarts: [], crashLoop: false },
     },
     findings: findingIds.map((id) => finding(id)),
     slowOperations: [],

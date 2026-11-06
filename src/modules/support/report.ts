@@ -44,6 +44,24 @@ export function buildReport({ pkg, diagnosisMarkdown, diagnosisSources, now = ne
       L.push(`- **Período:** ${formatLogTime(s.firstEpochMs)} a ${formatLogTime(s.lastEpochMs)}`);
     }
 
+    const av = s.availability;
+    if (av.restarts.length > 0) {
+      L.push("\n### Reinícios do servidor (indisponibilidade)");
+      if (av.crashLoop) L.push("- **Atenção:** vários reinícios em janela curta (possível crash loop / instabilidade grave).");
+      for (const r of av.restarts.slice(0, 15)) {
+        const downtime = r.downtimeMs != null ? `, fora por ~${Math.round(r.downtimeMs / 1000)}s` : "";
+        const cause =
+          r.precededByCrashSignal === "oom"
+            ? " — precedido por OutOfMemory"
+            : r.precededByCrashSignal === "fatal"
+              ? " — precedido por erro FATAL"
+              : r.precededByShutdown
+                ? " — parada registrada antes (possível manutenção)"
+                : " — sem parada limpa antes (possível queda abrupta)";
+        L.push(`- **${formatLogTime(r.epochMs)}** (linha ${r.line})${downtime}${cause}`);
+      }
+    }
+
     if (pkg.logAnalysis.findings.length > 0) {
       L.push("\n### Problemas conhecidos detectados");
       for (const f of pkg.logAnalysis.findings) {

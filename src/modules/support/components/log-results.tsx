@@ -1,9 +1,10 @@
 "use client";
 
-import { Activity, Clock, Gauge, Info, ListTree, Server } from "lucide-react";
+import { Activity, Clock, Gauge, Info, ListTree, Power, Server } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AnalysisResult } from "../stream-reader";
 import type { LogLevel } from "../log-parser";
+import type { Restart } from "../log-analysis";
 import type { Severity } from "../known-issues";
 import { SLOW_CHECKS, SLOW_SOLUTION_ID } from "../solutions-types";
 import { formatBytes, formatDuration, formatLogTime } from "../format";
@@ -65,6 +66,71 @@ function Timeline({ result }: { result: AnalysisResult }) {
   );
 }
 
+const RESTART_CAUSE: Record<NonNullable<Restart["precededByCrashSignal"]>, string> = {
+  oom: "precedido por falta de memória (OutOfMemory)",
+  fatal: "precedido por erro FATAL",
+};
+
+function AvailabilityCard({ result }: { result: AnalysisResult }) {
+  const { restarts, crashLoop } = result.summary.availability;
+  if (restarts.length === 0) {
+    return (
+      <Card title="Disponibilidade e reinícios" icon={Power}>
+        <p className="text-sm text-muted">
+          Nenhum reinício do servidor foi detectado no trecho analisado (não há marcos de subida como
+          &ldquo;up and running&rdquo; / WildFly started). Isso sugere que o serviço permaneceu no ar durante o período
+          coberto — uma indisponibilidade percebida pode ter sido de lentidão, rede ou infraestrutura, não de queda do processo.
+        </p>
+      </Card>
+    );
+  }
+
+  return (
+    <Card title={`Disponibilidade e reinícios (${restarts.length})`} icon={Power}>
+      {crashLoop && (
+        <p className="rounded-md border border-danger/40 bg-danger/10 p-2.5 text-sm text-danger">
+          <strong>Instabilidade grave:</strong> vários reinícios em janela curta (possível crash loop). O serviço subiu e
+          caiu repetidas vezes — investigue a causa que antecede os reinícios.
+        </p>
+      )}
+      <p className="text-xs text-muted">
+        Cada reinício é uma janela de indisponibilidade: o serviço caiu e voltou. O tempo é medido quando há uma parada
+        registrada antes da subida.
+      </p>
+      <ul className="divide-y divide-border">
+        {restarts.map((r, i) => (
+          <li key={`${r.epochMs}-${i}`} className="flex flex-wrap items-center gap-2 py-2 text-sm">
+            <span className="font-mono tabular-nums text-muted">{formatLogTime(r.epochMs)}</span>
+            <span className="text-xs">reinício · linha {r.line}</span>
+            {r.downtimeMs != null && (
+              <span className="rounded border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[11px] font-medium text-accent">
+                fora por ~{formatDuration(r.downtimeMs)}
+              </span>
+            )}
+            {r.precededByCrashSignal ? (
+              <span className="rounded border border-danger/40 bg-danger/10 px-1.5 py-0.5 text-[11px] font-medium text-danger">
+                {RESTART_CAUSE[r.precededByCrashSignal]}
+              </span>
+            ) : r.precededByShutdown ? (
+              <span className="rounded border border-border bg-surface-2 px-1.5 py-0.5 text-[11px] text-muted">
+                parada registrada antes (possível manutenção)
+              </span>
+            ) : (
+              <span className="rounded border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[11px] text-accent">
+                sem parada limpa antes (possível queda abrupta)
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+      <p className="text-xs text-muted">
+        Reinício &ldquo;sem parada limpa antes&rdquo; indica que o processo caiu sem shutdown ordenado (queda abrupta,
+        kill, falha de infra). &ldquo;Parada registrada antes&rdquo; costuma ser restart planejado.
+      </p>
+    </Card>
+  );
+}
+
 export function LogResults({ result }: { result: AnalysisResult }) {
   const { summary, findings } = result;
   const counts = summary.counts;
@@ -103,6 +169,9 @@ export function LogResults({ result }: { result: AnalysisResult }) {
           </p>
         )}
       </Card>
+
+      {/* Disponibilidade e reinícios (chave para investigar indisponibilidade) */}
+      <AvailabilityCard result={result} />
 
       {/* Ambiente (BootStrap) */}
       {summary.environment.length > 0 && (
