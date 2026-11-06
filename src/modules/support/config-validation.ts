@@ -86,7 +86,7 @@ export function validateConfig(config: ParsedConfig, ctx: VersionContext = { flu
         severity: "alta",
         title: "Memória máxima da JVM acima da RAM informada",
         detail: `-Xmx está em ${config.jvm.xmx}, acima da RAM informada (${ctx.ramGb} GB). A JVM pode não iniciar ou o SO pode derrubar o processo.`,
-        kbQuery: "dimensionamento modelo de dimensionamento JAVA_OPTS memória servidor de aplicação",
+        kbQuery: "modelo de dimensionamento",
       });
     }
     if (xmx && ram && xmx <= ram && xmx > ram * 0.9) {
@@ -95,7 +95,7 @@ export function validateConfig(config: ParsedConfig, ctx: VersionContext = { flu
         severity: "media",
         title: "Memória máxima da JVM muito próxima da RAM total",
         detail: `-Xmx (${config.jvm.xmx}) ocupa mais de 90% da RAM (${ctx.ramGb} GB), deixando pouco para o SO e o cache. Considere folga.`,
-        kbQuery: "dimensionamento modelo de dimensionamento consumo de memória servidor de aplicação",
+        kbQuery: "consumo de memória",
       });
     }
     if (xms && xmx && xms > xmx) {
@@ -112,7 +112,7 @@ export function validateConfig(config: ParsedConfig, ctx: VersionContext = { flu
         severity: "media",
         title: "-Xmx não definido no standalone.conf",
         detail: "Não foi encontrado -Xmx no JAVA_OPTS. Sem limite explícito, o dimensionamento de memória fica imprevisível.",
-        kbQuery: "configurando propriedades do sistema via JAVA_OPTS dimensionamento memória",
+        kbQuery: "propriedades do sistema via JAVA_OPTS",
       });
     }
   }
@@ -126,7 +126,7 @@ export function validateConfig(config: ParsedConfig, ctx: VersionContext = { flu
         severity: "alta",
         title: `Datasource "${label}" sem connection-url`,
         detail: "O datasource não tem URL de conexão definida.",
-        kbQuery: "configuração de banco de dados connection-url datasource",
+        kbQuery: "configuração do banco de dados",
       });
     }
     if (ds.maxPoolSize != null && ds.maxPoolSize < 10 && ds.jndi.includes("Fluig")) {
@@ -135,7 +135,7 @@ export function validateConfig(config: ParsedConfig, ctx: VersionContext = { flu
         severity: "media",
         title: `Pool pequeno no datasource "${label}"`,
         detail: `max-pool-size = ${ds.maxPoolSize}. Em produção, um pool muito pequeno pode causar espera por conexão sob carga.`,
-        kbQuery: "configuração de banco de dados pool de conexões dimensionamento",
+        kbQuery: "configuração do banco de dados",
       });
     }
     if (ds.minPoolSize != null && ds.maxPoolSize != null && ds.minPoolSize > ds.maxPoolSize) {
@@ -152,7 +152,7 @@ export function validateConfig(config: ParsedConfig, ctx: VersionContext = { flu
         severity: "baixa",
         title: `Conexão sem SSL no datasource "${label}"`,
         detail: "A connection-url usa useSSL=false. Avalie se o tráfego com o banco deveria ser criptografado neste ambiente.",
-        kbQuery: "encriptação de senha do banco de dados segurança da plataforma",
+        kbQuery: "encriptação de senha do banco de dados",
       });
     }
     if (ds.userName && /^(root|sa|admin)$/i.test(ds.userName)) {
@@ -179,7 +179,7 @@ export function validateConfig(config: ParsedConfig, ctx: VersionContext = { flu
         title: "Logger de categoria do Fluig em nível alto demais",
         detail: `As categorias ${off.join(", ")} estão em nível que suprime INFO/WARN. Isso pode fazer parecer que "os logs não aparecem" para workflow, customização ou dataset.`,
         reference: "https://centraldeatendimento.totvs.com/hc/pt-br/articles/27662259465751",
-        kbQuery: "controle de log gestão de logs ferramentas de análise de log",
+        kbQuery: "controle de log",
       });
     }
   }

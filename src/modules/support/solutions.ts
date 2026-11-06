@@ -9,27 +9,35 @@ import { SLOW_SOLUTION_ID, type IssueSolution } from "./solutions-types";
  */
 
 /** Query fixa para o grupo de operações lentas (JSChronos). */
-const SLOW_QUERY = "métodos de contorno de lentidão na plataforma avaliação de lentidão desempenho";
+const SLOW_QUERY = "contorno de lentidão";
 
 const SNIPPET_CHARS = 240;
 
 type SearchRow = {
   chunk_id: string;
   content: string;
-  url: string | null;
-  title: string | null;
+  /** Nomes conforme a função search_kb_chunks (migration 0006). */
+  source_url: string | null;
+  source_title: string | null;
 };
+
+/** Conteúdo curto tende a ser página-índice/navegação; preferimos trechos substanciais. */
+const MIN_SUBSTANTIAL_CHARS = 200;
 
 async function bestMatch(
   rpc: (query: string) => Promise<SearchRow[]>,
   query: string,
 ): Promise<Omit<IssueSolution, "issueId"> | null> {
-  const rows = await rpc(query);
-  const top = rows.find((r) => r.url && r.title);
-  if (!top || !top.url) return null;
+  const rows = (await rpc(query)).filter((r) => r.source_url && r.source_title);
+  if (rows.length === 0) return null;
+  // Entre os melhores resultados, prefere o primeiro com conteúdo substancial (evita
+  // páginas-índice de poucas linhas que o full-text às vezes traz no topo). Se todos
+  // forem curtos, fica com o de maior relevância (o primeiro).
+  const top = rows.find((r) => r.content.trim().length >= MIN_SUBSTANTIAL_CHARS) ?? rows[0];
+  if (!top.source_url) return null;
   return {
-    title: (top.title ?? "Documentação oficial").slice(0, 160),
-    url: top.url,
+    title: (top.source_title ?? "Documentação oficial").slice(0, 160),
+    url: top.source_url,
     snippet: top.content.replace(/\s+/g, " ").trim().slice(0, SNIPPET_CHARS),
   };
 }
@@ -53,7 +61,8 @@ export async function findSolutions(
   const supabase = await createClient();
 
   const rpc = async (query: string): Promise<SearchRow[]> => {
-    const { data, error } = await supabase.rpc("search_kb_chunks", { query_text: query, match_count: 3 });
+    // 5 candidatos: o bestMatch filtra páginas-índice e prefere o trecho mais substancial.
+    const { data, error } = await supabase.rpc("search_kb_chunks", { query_text: query, match_count: 5 });
     if (error) {
       // Base ainda não instalada ou indisponível: degrada em silêncio (sem solução sugerida).
       return [];
