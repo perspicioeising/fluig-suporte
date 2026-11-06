@@ -36,12 +36,30 @@ export type KnownIssue = {
 
 export const KNOWN_ISSUES: KnownIssue[] = [
   {
+    id: "indexer-solr-down",
+    title: "Serviço de indexação (Solr/Indexer) indisponível",
+    severity: "alta",
+    // Solr responde na porta 8983. Falha ao validar o core ou conexão recusada ao Solr indica
+    // que o serviço de indexação (fluig_Indexer) está parado ou inacessível — causa comum de
+    // erros em cascata de indexação de documentos (FDNIndexerService).
+    pattern: /Failed to validate Solr core|SolrServerException|refused connection at.*\/solr|:8983\/solr|FDNIndexerService|IndexerException/i,
+    hint: "O serviço de indexação (fluig_Indexer / Solr) está parado ou inacessível (normalmente na porta 8983). Enquanto estiver fora, a indexação de documentos falha em cascata. Verifique se o serviço fluig_Indexer está em execução e se a porta 8983 responde no servidor.",
+    kbQuery: "servidor de indexação",
+    checks: [
+      "Confirme se o serviço fluig_Indexer (Solr) está em execução no servidor.",
+      "Do próprio servidor do Fluig, teste se a porta 8983 responde (ex.: http://localhost:8983/solr).",
+      "Verifique se o Solr não caiu por falta de memória ou foi derrubado junto com um reinício do Fluig.",
+      "Após subir o Indexer, confirme no log se as mensagens de falha de indexação cessaram.",
+    ],
+  },
+  {
     id: "db-connection-lost",
     title: "Falha/perda de conexão com o banco de dados",
     severity: "alta",
-    // Só padrões de CONEXÃO. Erros de SQL (constraint, sintaxe) são tratados à parte:
-    // "SQLState" e "ORA-" genéricos saíram daqui para não classificar erro de dado como conexão.
-    pattern: /Communications link failure|Connection (?:refused|reset|timed out|is not available)|Could not (?:open|get) .*connection|CannotGetJdbcConnection|No operations allowed after connection closed|connection pool|ORA-12(?:17|70|05)|The connection is closed/i,
+    // Só padrões inequívocos de conexão com BANCO. "Connection refused/reset" solto é ambíguo
+    // (casa Solr, serviços externos etc.), então exigimos contexto JDBC/datasource/Hibernate.
+    // Erros de SQL (constraint, sintaxe) são tratados à parte.
+    pattern: /Communications link failure|CannotGetJdbcConnection|No operations allowed after connection closed|Could not open (?:JDBC |JPA )?connection|Could not (?:open|get) .*(?:JDBC|hibernate|datasource).*connection|JDBCConnectionException|The connection is closed|ORA-12(?:17|70|05)|Connection (?:refused|timed out|reset).*(?:jdbc|sqlserver|oracle|postgres|datasource|FluigDS)/i,
     hint: "Há indícios de falha ao conectar ao banco. Verifique a disponibilidade do banco, a connection-url e o pool do datasource.",
     reference: "https://centraldeatendimento.totvs.com/hc/pt-br/articles/27663436384663",
     kbQuery: "could not open connection pool de conexões",
@@ -289,15 +307,23 @@ const SEVERITY_RANK: Record<Severity, number> = { alta: 0, media: 1, baixa: 2 };
  */
 function finalizeFindings(findings: IssueFinding[]): IssueFinding[] {
   const ids = new Set(findings.map((f) => f.issue.id));
+  const suppressed = new Set<string>();
+
   // A violação de constraint na FLUIG_RUNTIMEDATA (regra de negócio) substitui o
   // alerta genérico de violação de constraint, para não mostrar os dois para o mesmo erro.
-  const filtered =
-    ids.has("db-runtimedata-duplicate")
-      ? findings.filter((f) => f.issue.id !== "db-constraint-violation")
-      : findings;
-  return filtered.sort(
-    (a, b) => SEVERITY_RANK[a.issue.severity] - SEVERITY_RANK[b.issue.severity] || b.count - a.count,
-  );
+  if (ids.has("db-runtimedata-duplicate")) suppressed.add("db-constraint-violation");
+
+  // Solr/Indexer fora do ar aparece como "Connection refused" (porta 8983) e dispara, por
+  // tabela, falsos positivos de "conexão com banco" e "timeout de serviço externo". Quando a
+  // causa do Indexer está presente, ela é a classificação correta: suprime os genéricos.
+  if (ids.has("indexer-solr-down")) {
+    suppressed.add("db-connection-lost");
+    suppressed.add("integration-service-timeout");
+  }
+
+  return findings
+    .filter((f) => !suppressed.has(f.issue.id))
+    .sort((a, b) => SEVERITY_RANK[a.issue.severity] - SEVERITY_RANK[b.issue.severity] || b.count - a.count);
 }
 
 /**

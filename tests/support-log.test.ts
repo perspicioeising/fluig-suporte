@@ -240,3 +240,29 @@ describe("lentidão (JSChronos)", () => {
     assert.equal(acc.slowOperations().length, 0);
   });
 });
+
+describe("indexador Solr fora do ar", () => {
+  // Erro real: EJB do Indexer falha porque o Solr (porta 8983) recusou conexão.
+  const INDEXER = [
+    "2026-03-03 10:20:08,000 ERROR [org.jboss.as.ejb3.invocation] (Thread-34) WFLYEJB0034: EJB Invocation failed on component service/Indexer for method FDNIndexerService.index",
+    "Caused by: com.totvs.technology.foundation.indexer.exception.IndexerException: Failed to validate Solr core: 1",
+    "Caused by: org.apache.solr.client.solrj.SolrServerException: Server refused connection at: http://172.23.52.19:8983/solr",
+    "Caused by: org.apache.http.conn.HttpHostConnectException: Connect to 172.23.52.19:8983 failed: Connection refused: connect",
+  ].join("\n");
+
+  test("classifica como Indexer/Solr e não como banco nem timeout de serviço externo", () => {
+    const { events } = parseLog(INDEXER);
+    const ids = detectKnownIssues(events).map((f) => f.issue.id);
+    assert.ok(ids.includes("indexer-solr-down"), "deveria detectar o Indexer");
+    assert.ok(!ids.includes("db-connection-lost"), "não deveria classificar como conexão de banco");
+    assert.ok(!ids.includes("integration-service-timeout"), "não deveria classificar como serviço externo");
+  });
+
+  test("conexão de banco real (JDBC) ainda é detectada", () => {
+    const { events } = parseLog(
+      "2026-03-03 10:00:00,000 ERROR [c] (t) org.hibernate.exception.JDBCConnectionException: Could not open JDBC connection for transaction",
+    );
+    const ids = detectKnownIssues(events).map((f) => f.issue.id);
+    assert.ok(ids.includes("db-connection-lost"));
+  });
+});
