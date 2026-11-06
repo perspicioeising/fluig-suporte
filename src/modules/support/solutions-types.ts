@@ -16,3 +16,11 @@ export type IssueSolution = {
 
 /** Id sintético do grupo de operações lentas (JSChronos). */
 export const SLOW_SOLUTION_ID = "slow-operations";
+
+/** Passos de investigação para operações lentas (JSChronos). */
+export const SLOW_CHECKS: string[] = [
+  "Identifique a operação/dataset mais lento da lista e verifique se é consulta a banco externo, serviço remoto ou processamento pesado.",
+  "Correlacione o horário das execuções lentas com picos de uso no servidor (CPU, memória, I/O).",
+  "Para dataset que acessa banco externo, revise a query e os índices da tabela consultada.",
+  "Se a lentidão for em serviço externo, meça o tempo de resposta dele isoladamente a partir do servidor do Fluig.",
+];

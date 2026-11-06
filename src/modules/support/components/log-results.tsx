@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import type { AnalysisResult } from "../stream-reader";
 import type { LogLevel } from "../log-parser";
 import type { Severity } from "../known-issues";
-import { SLOW_SOLUTION_ID } from "../solutions-types";
+import { SLOW_CHECKS, SLOW_SOLUTION_ID } from "../solutions-types";
 import { formatBytes, formatDuration, formatLogTime } from "../format";
 import { SolutionLink, useSolutions } from "./solution-link";
 
@@ -140,6 +140,18 @@ export function LogResults({ result }: { result: AnalysisResult }) {
                 </div>
                 <p className="mt-1.5 text-sm text-muted">{f.issue.hint}</p>
                 <p className="mt-1 font-mono text-xs break-all text-muted/80">{f.sample}</p>
+                {f.issue.checks && f.issue.checks.length > 0 && (
+                  <details className="mt-2 text-sm">
+                    <summary className="cursor-pointer text-xs font-medium text-accent">
+                      Como investigar ({f.issue.checks.length} passos)
+                    </summary>
+                    <ol className="mt-1.5 list-decimal space-y-1 pl-5 text-xs text-muted">
+                      {f.issue.checks.map((c, i) => (
+                        <li key={i}>{c}</li>
+                      ))}
+                    </ol>
+                  </details>
+                )}
                 {f.issue.reference && (
                   <a
                     href={f.issue.reference}
@@ -176,6 +188,16 @@ export function LogResults({ result }: { result: AnalysisResult }) {
               </li>
             ))}
           </ul>
+          <details className="text-sm">
+            <summary className="cursor-pointer text-xs font-medium text-accent">
+              Como investigar ({SLOW_CHECKS.length} passos)
+            </summary>
+            <ol className="mt-1.5 list-decimal space-y-1 pl-5 text-xs text-muted">
+              {SLOW_CHECKS.map((c, i) => (
+                <li key={i}>{c}</li>
+              ))}
+            </ol>
+          </details>
           {solutions.get(SLOW_SOLUTION_ID) && <SolutionLink solution={solutions.get(SLOW_SOLUTION_ID)!} />}
         </Card>
       )}

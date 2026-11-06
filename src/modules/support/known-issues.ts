@@ -26,6 +26,12 @@ export type KnownIssue = {
    * Sem isto, o problema não busca solução automática na base.
    */
   kbQuery?: string;
+  /**
+   * Passos objetivos de investigação (o que testar/verificar para confirmar a causa).
+   * Acionáveis e, de preferência, somente leitura. Complementam o `hint` (o que é) e a
+   * solução documentada (onde ler) com o "como investigar agora".
+   */
+  checks?: string[];
 };
 
 export const KNOWN_ISSUES: KnownIssue[] = [
@@ -37,6 +43,12 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     hint: "Há indícios de falha ao conectar ao banco. Verifique a disponibilidade do banco, a connection-url e o pool do datasource.",
     reference: "https://centraldeatendimento.totvs.com/hc/pt-br/articles/27663436384663",
     kbQuery: "configuração do banco de dados",
+    checks: [
+      "Confirme que o serviço do banco está no ar e aceitando conexões (do próprio servidor do Fluig, não só da sua máquina).",
+      "Teste a conectividade do servidor do Fluig até o host/porta do banco (telnet/Test-NetConnection).",
+      "Confira a connection-url, o usuário e a senha do datasource no standalone.xml (ou domain.xml).",
+      "Verifique o max-pool-size do datasource: sob carga, um pool pequeno gera espera por conexão.",
+    ],
   },
   {
     id: "port-in-use",
@@ -78,6 +90,12 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     pattern: /OutOfMemoryError|Java heap space|Metaspace|GC overhead limit exceeded/i,
     hint: "Esgotamento de memória da JVM. Confira -Xmx e MetaspaceSize no standalone.conf frente à RAM da máquina e à carga.",
     kbQuery: "consumo de memória",
+    checks: [
+      "Verifique -Xmx e MaxMetaspaceSize no standalone.conf e compare com a RAM física da máquina.",
+      "Identifique se o erro é 'Java heap space' (aumentar -Xmx) ou 'Metaspace' (aumentar MaxMetaspaceSize) — são limites diferentes.",
+      "Correlacione o horário do OutOfMemory com picos de uso ou uma operação específica (dataset/relatório pesado).",
+      "Confira o dimensionamento recomendado para o número de usuários do ambiente.",
+    ],
   },
   {
     id: "md5-login-disabled",
@@ -96,6 +114,11 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     pattern: /ERRO AO EXECUTAR SCRIPT|Executando evento :.*(?:NOK|Exception)|ScriptingLog.*(?:Erro|Exception)/i,
     hint: "Um evento/customização do cliente lançou erro. Verifique o evento e a linha citada no log (o Fluig costuma indicar o número da linha do script).",
     kbQuery: "desenvolvimento de eventos",
+    checks: [
+      "Identifique no log o nome do evento e o número da linha do script indicados na exceção.",
+      "Abra o evento correspondente (formulário, processo ou global) e revise a linha citada.",
+      "Reproduza a ação que dispara o evento em homologação para confirmar o erro.",
+    ],
   },
   {
     id: "impersonation-denied",
@@ -104,6 +127,11 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     pattern: /sem permiss[ãa]o de personifica|FDNAccessDeniedException.*personifica/i,
     hint: "Integração tentou personificar um usuário sem permissão. Em OAuth application, no usuário aplicativo, habilite \"Permitir impersonalização\".",
     kbQuery: "personificação",
+    checks: [
+      "No cadastro do OAuth application, confirme se o usuário aplicativo tem \"Permitir impersonalização\" habilitado.",
+      "Verifique qual usuário a integração está tentando personificar e se ele existe e está ativo.",
+      "Confira se a chamada envia o header/parâmetro de personificação conforme a documentação de autorização REST.",
+    ],
   },
   {
     id: "dataset-class-not-found",
@@ -120,6 +148,12 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     pattern: /Connect to [\d.]+:\d+.*(?:Connection timed out|failed)|HttpHostConnectException/i,
     hint: "Falha de comunicação com um serviço externo cadastrado no Fluig. Verifique se o serviço está disponível e se o servidor do Fluig alcança o endereço/porta (teste via Postman/SoapUI no próprio servidor).",
     kbQuery: "integração com aplicativos externos",
+    checks: [
+      "Identifique no log o endereço/porta do serviço que deu timeout (a mensagem costuma trazer o IP:porta).",
+      "Do próprio servidor do Fluig, teste o alcance até esse endereço/porta (não da sua estação).",
+      "Verifique se há proxy/firewall entre o Fluig e o serviço, e se o serviço externo estava no ar no horário do erro.",
+      "Se a conexão for HTTPS, confira se o certificado do serviço está confiável no servidor do Fluig.",
+    ],
   },
   {
     id: "war-access-denied",
