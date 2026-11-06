@@ -35,7 +35,7 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/catalogo",
-    label: "APIs Fluig",
+    label: "Catalogos",
     description: "Catálogo pesquisável de APIs REST, SOAP e SDK.",
     icon: BookOpen,
   },
@@ -80,12 +80,12 @@ export const NAV_ITEMS: NavItem[] = [
     description: "Analise erros de integração e receba próximos passos.",
     icon: Bug,
   },
-  {
-    href: "/historico",
-    label: "Histórico",
-    description: "Requisições, análises e diagnósticos anteriores.",
-    icon: History,
-  },
+  // {
+  //   href: "/historico",
+  //   label: "Histórico",
+  //   description: "Requisições, análises e diagnósticos anteriores.",
+  //   icon: History,
+  // },
   {
     href: "/configuracoes",
     label: "Configurações",
