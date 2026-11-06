@@ -71,16 +71,18 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     ],
   },
   {
-    id: "db-runtimedata-duplicate",
-    title: "Chave duplicada na FLUIG_RUNTIMEDATA (geralmente inofensivo)",
+    id: "db-async-duplicate-benign",
+    title: "Chave duplicada em tabela de operação assíncrona (geralmente inofensivo)",
     severity: "baixa",
-    // Caso específico: violação de PK na tabela de cache FLUIG_RUNTIMEDATA. Segundo a Central
-    // de Atendimento, é regra de negócio (fila assíncrona de cache) e NÃO afeta o produto.
-    pattern: /FLUIG_RUNTIMEDATA/i,
-    hint: "A FLUIG_RUNTIMEDATA é uma tabela de cache (alertas, traduções, início e atualizações) alimentada por uma fila de execução assíncrona. Sob uso intenso em curtos intervalos, surgem mensagens de chave duplicada no log do banco — por ser regra de negócio, geralmente NÃO afetam o desempenho nem o funcionamento do produto. Trate como ruído a menos que haja impacto funcional concreto. (Orientação do time de suporte Fluig.)",
+    // Violação de PK em tabelas que o Fluig alimenta por fila ASSÍNCRONA, onde a mesma chave
+    // pode ser inserida em paralelo: FLUIG_RUNTIMEDATA (cache de alertas/traduções) e
+    // HISTOR_ACES (histórico de acesso/hit a documento, via asyncHitDocument). São regra de
+    // negócio e NÃO afetam o produto. Pega o nome da tabela junto de uma violação de PK.
+    pattern: /FLUIG_RUNTIMEDATA|HISTOR_ACES|pk_HISTOR_ACES|UpdateDocumentHits|asyncHitDocument/i,
+    hint: "Chave duplicada em tabela que o Fluig alimenta por fila assíncrona (ex.: FLUIG_RUNTIMEDATA = cache de alertas/traduções; HISTOR_ACES = histórico de acesso a documentos). Sob concorrência, a mesma chave pode ser inserida em paralelo e o banco rejeita a segunda — é regra de negócio e, em geral, NÃO afeta o funcionamento do produto (o documento é acessado normalmente; só o registro assíncrono colide). Trate como ruído a menos que haja impacto funcional concreto. (Orientação do time de suporte Fluig.)",
     checks: [
       "Confirme se há impacto funcional real (algo deixou de funcionar) ou se são apenas mensagens acumuladas no log do banco.",
-      "Para limpar registros antigos, realize um truncate na tabela FLUIG_RUNTIMEDATA.",
+      "Para a FLUIG_RUNTIMEDATA, se for só ruído, um truncate limpa registros antigos.",
       "Verifique se o parâmetro \"Is Read Committed Snapshot On\" está ativado na configuração do banco (SQL Server).",
       "Revise customizações que usam os usuários fluigds/fluigdsro.",
       "Reavalie o tamanho do pool de conexões (ver o artigo \"Could not open connection\" na Central de Atendimento).",
@@ -309,9 +311,10 @@ function finalizeFindings(findings: IssueFinding[]): IssueFinding[] {
   const ids = new Set(findings.map((f) => f.issue.id));
   const suppressed = new Set<string>();
 
-  // A violação de constraint na FLUIG_RUNTIMEDATA (regra de negócio) substitui o
-  // alerta genérico de violação de constraint, para não mostrar os dois para o mesmo erro.
-  if (ids.has("db-runtimedata-duplicate")) suppressed.add("db-constraint-violation");
+  // A violação de constraint benigna (tabela assíncrona: FLUIG_RUNTIMEDATA, HISTOR_ACES)
+  // substitui o alerta genérico de violação de constraint, para não mostrar os dois para o
+  // mesmo erro — é o padrão dominante no Fluig. O detalhe das tabelas fica no achado benigno.
+  if (ids.has("db-async-duplicate-benign")) suppressed.add("db-constraint-violation");
 
   // Solr/Indexer fora do ar aparece como "Connection refused" (porta 8983) e dispara, por
   // tabela, falsos positivos de "conexão com banco" e "timeout de serviço externo". Quando a

@@ -266,3 +266,26 @@ describe("indexador Solr fora do ar", () => {
     assert.ok(ids.includes("db-connection-lost"));
   });
 });
+
+describe("violação de constraint (benigno vs real)", () => {
+  test("chave duplicada em HISTOR_ACES é tratada como benigna e suprime o genérico", () => {
+    const { events } = parseLog(
+      [
+        "2026-03-03 08:32:32,000 WARN  [org.hibernate.engine.jdbc.spi.SqlExceptionHelper] (t) SQL Error: 2627, SQLState: 23000",
+        "2026-03-03 08:32:32,001 ERROR [org.hibernate.engine.jdbc.spi.SqlExceptionHelper] (t) Violation of PRIMARY KEY constraint 'pk_HISTOR_ACES'. Cannot insert duplicate key in object 'dbo.HISTOR_ACES'.",
+      ].join("\n"),
+    );
+    const ids = detectKnownIssues(events).map((f) => f.issue.id);
+    assert.ok(ids.includes("db-async-duplicate-benign"), "deveria reconhecer a tabela assíncrona");
+    assert.ok(!ids.includes("db-constraint-violation"), "o alerta genérico deveria ser suprimido");
+  });
+
+  test("violação em tabela de aplicação (sem ser assíncrona) mantém o alerta genérico", () => {
+    const { events } = parseLog(
+      "2026-03-03 09:00:00,000 ERROR [c] (t) Violation of UNIQUE KEY constraint 'UK_MINHA_TABELA'. Cannot insert duplicate key in object 'dbo.MINHA_TABELA'.",
+    );
+    const ids = detectKnownIssues(events).map((f) => f.issue.id);
+    assert.ok(ids.includes("db-constraint-violation"));
+    assert.ok(!ids.includes("db-async-duplicate-benign"));
+  });
+});
